@@ -1,0 +1,29 @@
+{
+  "name": "baizi-plugin",
+  "version": "1.0.3",
+  "description": "Yunzai-Bot扩展插件",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/baizi/baizi-plugin.git"
+  },
+  "keywords": [
+    "Miao-Yunzai",
+    "TRSS-Yunzai",
+    "baizi-plugin"
+  ],
+  "author": "baizi",
+  "license": "MIT",
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "axios": "^1.7.7",
+    "crypto": "^1.0.1",
+    "ulid": "^3.0.0",
+    "sqlite": "^4.2.1",
+    "sqlite3": "^5.1.6"
+  }
+}
