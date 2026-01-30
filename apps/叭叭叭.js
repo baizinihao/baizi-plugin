@@ -1,27 +1,34 @@
-import plugin from '../../../lib/plugins/plugin.js';
+import plugin from '../../lib/plugins/plugin.js';
 
-export default class 光遇叫声 extends plugin {
+const CONFIG = {
+  skyVoiceUrl: 'http://baizihaoxiao.xin/API/sky3.php',
+  triggerCmds: ['光遇叫声', '随机光遇叫声', '#光遇叫声', '#随机光遇叫声']
+};
+
+export default class SkyVoiceAPI extends plugin {
   constructor() {
     super({
-      name: '光遇叫声',
+      name: '光遇叫声API',
+      dsc: '调用光遇随机叫声接口，返回音频',
       event: 'message',
-      priority: 9999,
+      priority: 5000,
       rule: [
-        { reg: /^#?随机光遇叫声$/, fnc: 'skySound' },
-        { reg: /^#?光遇叫声$/, fnc: 'skySound' }
+        {
+          reg: new RegExp(`^(${CONFIG.triggerCmds.join('|')})$`),
+          fnc: 'sendSkyVoice'
+        }
       ]
     });
   }
 
-  async skySound(e) {
-    const pre = e.msg.startsWith('#') ? '#' : '';
+  async sendSkyVoice(e) {
     try {
-      const res = await fetch('http://baizihaoxiao.xin/API/sky3.php');
-      const buffer = await res.arrayBuffer();
-      const base64 = Buffer.from(buffer).toString('base64');
-      await e.reply(`${pre}[CQ:voice,base64=${base64}]`);
-    } catch {
-      await e.reply(`${pre}光遇叫声获取失败，请稍后再试～`);
+      const res = await fetch(CONFIG.skyVoiceUrl, { timeout: 15000 });
+      if (!res.ok) throw new Error(`接口请求失败，状态码：${res.status}`);
+      await e.reply([segment.record(res.url)]);
+    } catch (err) {
+      logger.error(`[光遇叫声API] 调用失败：`, err);
+      await e.reply('光遇叫声获取失败，请稍后重试~');
     }
   }
 }
