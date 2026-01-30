@@ -29,11 +29,20 @@ const saveConfig = (newConfig) => {
   SceneryVideo.initPushTimer();
 };
 
+// 带浏览器请求头（防反爬）+ 超时的fetch，适配直返视频API
 const fetchWithTimeout = async (url, timeout = 20000) => {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Referer': 'http://baizihaoxiao.xin/',
+        'Accept': '*/*',
+        'Connection': 'keep-alive'
+      }
+    });
     clearTimeout(id);
     return res;
   } catch (err) {
@@ -99,7 +108,7 @@ export default class SceneryVideo extends plugin {
     try {
       const res = await fetchWithTimeout(CONFIG.videoUrl);
       if (!res.ok) throw new Error(`状态码：${res.status}`);
-      const videoUrl = res.url;
+      const videoUrl = res.url; // 直取视频链接
       for (const gid of uniqueGroups) {
         try {
           await Bot.sendGroupMsg(gid, [segment.video(videoUrl)]);
@@ -120,7 +129,7 @@ export default class SceneryVideo extends plugin {
     try {
       const res = await fetchWithTimeout(CONFIG.videoUrl);
       if (!res.ok) throw new Error(`状态码：${res.status}`);
-      await e.reply([segment.video(res.url)]);
+      await e.reply([segment.video(res.url)]); // 直取视频链接
     } catch (err) {
       logger.error(`[风景视频] 手动调用失败：`, err);
       await e.reply('风景视频获取失败，请稍后重试~');
@@ -160,7 +169,7 @@ export default class SceneryVideo extends plugin {
     if (!groupList.length) return e.reply('暂无风景推送群，无法测试');
     try {
       const res = await fetchWithTimeout(CONFIG.videoUrl);
-      if (!res.ok) throw new Error(`状态码：${res.status}`);
+      if (!res.ok) throw new Error(`接口请求失败，状态码：${res.status}`);
       const videoUrl = res.url;
       let success = 0, fail = 0;
       for (const gid of groupList) {
