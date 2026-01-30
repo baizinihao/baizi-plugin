@@ -1,8 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js';
 import fs from 'fs';
 import path from 'path';
-import segment from '../../../lib/segment.js';
-import logger from '../../../lib/logger.js';
 
 const CONFIG_PATH = path.resolve(process.cwd(), './plugins/baizi-plugin/apps/config/风景视频.json');
 
