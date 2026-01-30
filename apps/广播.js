@@ -1,9 +1,9 @@
-import plugin from '../../lib/plugins/plugin.js'
+import plugin from '../../../lib/plugins/plugin.js'
 import yaml from 'yaml'
 import { promises as fs } from 'fs'
 import fsSync from 'fs'
 import path from 'path'
-import common from '../../lib/common/common.js'
+import common from '../../../lib/common/common.js'
 
 const configPath = path.join(process.cwd(), 'plugins', 'baizi-plugin', 'config', '广播')
 if (!fsSync.existsSync(path.dirname(configPath))) {
