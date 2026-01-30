@@ -8,7 +8,7 @@ export class QQHead extends plugin {
       event: "message",
       priority: 5000,
       rule: [
-        { reg: "^#?(QQ|qq)头像\\s*(\\d+)?$", fnc: "getQQHead" }
+        { reg: "^#?(QQ|qq)头像\\s*(\\d+)$", fnc: "getQQHead" }
       ]
     });
   }
@@ -29,18 +29,12 @@ export class QQHead extends plugin {
   }
 
   async getQQHead(e) {
-    const qq = e.msg.match(/^#?(QQ|qq)头像\s*(\d+)?$/)[2];
-    if (!qq) {
-      return await e.reply("请输入QQ号，示例：\n#QQ头像 123456\nqq头像 654321", true);
-    }
+    const qq = e.msg.match(/^#?(QQ|qq)头像\\s*(\\d+)$/)[2];
     const data = await this.requestApi(qq);
     if (data.code !== 1 || !data.data) {
       return await e.reply(data.msg || "查询失败，可能是QQ号无效", true);
     }
-    const msg = [
-      `🎯 QQ号：${qq}`,
-      segment.image(data.data)
-    ];
-    await e.reply(msg, true);
+    
+    await e.reply(segment.image(data.data), true);
   }
 }
