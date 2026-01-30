@@ -1,12 +1,11 @@
 import plugin from '../../../lib/plugins/plugin.js';
 import yaml from 'yaml';
-import { promises as fs } from 'fs';
+import fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import path from 'path';
 import common from '../../../lib/common/common.js';
 
-// 配置文件路径：plugins/baizi-plugin/config/广播.json
 const configPath = path.join(process.cwd(), 'plugins', 'baizi-plugin', 'config', '广播.json');
-// 自动创建配置目录和文件
 if (!fs.existsSync(path.dirname(configPath))) {
   fs.mkdirSync(path.dirname(configPath), { recursive: true });
 }
@@ -18,7 +17,6 @@ if (!fs.existsSync(configPath)) {
   };
   fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
 }
-// 读取配置
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
 export class example2 extends plugin {
@@ -47,9 +45,8 @@ export class example2 extends plugin {
     this.finish('broadcast_');
     const msg = e.msg.match(/^#(白名单|黑名单)?广播通知$/);
     console.log(e.msg);
-    // 正确拼接other.yaml路径
     const otherYamlPath = path.join(process.cwd(), 'config', 'other.yaml');
-    const otheryaml = await fs.readFile(otherYamlPath, 'utf-8');
+    const otheryaml = await fsPromises.readFile(otherYamlPath, 'utf-8');
     const other = yaml.parse(otheryaml);
     let targetGroups = [];
     if (!msg[1]) {
