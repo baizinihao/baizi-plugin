@@ -1,7 +1,7 @@
-import plugin from '../../lib/plugins/plugin.js'
+import plugin from '../../../lib/plugins/plugin.js'
 import yaml from 'yaml'
 import { promises as fs } from 'fs'
-import common from '../../lib/common/common.js'
+import common from '../../../lib/common/common.js'
 import path from 'path'
 
 // 默认配置
