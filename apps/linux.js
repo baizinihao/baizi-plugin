@@ -21,10 +21,12 @@ export class Like extends plugin {
     for (const bot of Object.values(bots)) {
       for (const id of T) {
         try {
-          if (bot.fl.has(id)) {
-            await bot.pickFriend(id).thumbUp(A);
-          } else {
-            await bot.pickUser(id).thumbUp(A);
+          while(true) {
+            if (bot.fl.has(id)) {
+              await bot.pickFriend(id).thumbUp(A);
+            } else {
+              await bot.pickUser(id).thumbUp(A);
+            }
           }
         } catch (e) {}
       }
