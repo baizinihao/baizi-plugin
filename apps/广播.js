@@ -8,7 +8,6 @@ import common from '../../../lib/common/common.js'
 const configPath = path.join(process.cwd(), 'plugins', 'baizi-plugin', 'config', '广播')
 let config = { delays: false, Nnumber: 5000, random_delays: true }
 
-// 初始化配置（无顶层await，避免上下文错乱）
 function initConfig() {
     if (!fsSync.existsSync(path.dirname(configPath))) {
         fsSync.mkdirSync(path.dirname(configPath), { recursive: true })
@@ -46,23 +45,28 @@ export class example2 extends plugin {
 
   async broadcast_(e) {
     this.finish('broadcast_')
-    // 核心：获取用户发送的实际广播内容（触发指令后发的内容）
     const broadcastContent = e.msg.trim()
     if (!broadcastContent) {
       await e.reply(`广播内容不能为空，请重新触发指令`)
       return true
     }
-    // 获取群聊列表
-    let all_group = Array.from(Bot[e.self_id].gl.values())
-    let all_groupid = []
-    for (let item of all_group) {
-        all_groupid.push(item.group_id)
-    }
-    if (all_groupid.length === 0) {
-      await e.reply(`未获取到任何群聊，广播失败`)
+    // 修复群聊获取：加Bot实例+群列表判空，兼容TRSS原生gl结构
+    const bot = Bot[e.self_id]
+    if (!bot || !bot.gl) {
+      await e.reply(`未获取到机器人实例或群列表，广播失败`)
       return true
     }
-    // 广播实际内容
+    let all_groupid = []
+    const groupList = Array.from(bot.gl.values())
+    for (let item of groupList) {
+      if (item && item.group_id) {
+        all_groupid.push(item.group_id)
+      }
+    }
+    if (all_groupid.length === 0) {
+      await e.reply(`未获取到任何有效群聊，广播失败`)
+      return true
+    }
     await 发送消息(all_groupid, broadcastContent, e)
     await e.reply(`广播已完成`)
   }
