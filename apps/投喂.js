@@ -3,6 +3,7 @@ import path from 'path';
 import plugin from '../../../lib/plugins/plugin.js';
 import axios from 'axios';
 import https from 'https';
+import http from 'http';
 import { fileURLToPath } from 'url';
 
 // 获取当前文件路径
@@ -87,7 +88,8 @@ export class ZanzhuPlugin extends plugin {
   async addZanzhu(e) {
     if (!(await this.checkPermission(e))) return;
 
-    const match = e.msg.match(/^#?赞助添加\s+(\d+):(\d+(\.\d+)?)$/);
+    // 修复正则，支持#赞助添加 10001:1 这种格式
+    const match = e.msg.match(/^#?赞助添加\s+(\d+):(\d+(?:\.\d+)?)$/);
     if (!match) {
       await e.reply('指令格式错误，请使用：#赞助添加 QQ号:金额\n例如：#赞助添加 10001:50.00');
       return;
@@ -117,7 +119,8 @@ export class ZanzhuPlugin extends plugin {
   async updateZanzhu(e) {
     if (!(await this.checkPermission(e))) return;
 
-    const match = e.msg.match(/^#?赞助修改\s+(\d+):(\d+(\.\d+)?)$/);
+    // 修复正则，支持#赞助修改 10001:100 这种格式
+    const match = e.msg.match(/^#?赞助修改\s+(\d+):(\d+(?:\.\d+)?)$/);
     if (!match) {
       await e.reply('指令格式错误，请使用：#赞助修改 QQ号:新金额\n例如：#赞助修改 10001:100.00');
       return;
@@ -145,6 +148,7 @@ export class ZanzhuPlugin extends plugin {
   async deleteZanzhu(e) {
     if (!(await this.checkPermission(e))) return;
 
+    // 修复正则
     const match = e.msg.match(/^#?赞助删除\s+(\d+)$/);
     if (!match) {
       await e.reply('指令格式错误，请使用：#赞助删除 QQ号\n例如：#赞助删除 10001');
@@ -181,20 +185,24 @@ export class ZanzhuPlugin extends plugin {
         }
       });
       
+      // 检查API返回的数据结构
+      console.log(`QQ ${qqnumber} API响应:`, JSON.stringify(response.data));
+      
       if (response.data && response.data.code === 1 && response.data.data) {
         const data = response.data.data;
-        // 获取真实的用户名，如果为空则使用默认
-        const nickname = data.name ? data.name.trim() : null;
+        // 获取真实的用户名，如果为空则使用隐藏的QQ号
+        const nickname = data.name ? data.name.trim() : this.hideQQNumber(qqnumber);
         
         return {
           success: true,
-          nickname: nickname || this.hideQQNumber(qqnumber),
+          nickname: nickname,
           avatar: data.imgurl || `https://q1.qlogo.cn/g?b=qq&nk=${qqnumber}&s=640`,
           uin: data.uin || qqnumber
         };
       }
       
-      // API返回格式不符合预期时使用默认信息
+      console.log(`QQ ${qqnumber} API返回格式不符合预期:`, response.data);
+      // API返回格式不符合预期时使用隐藏的QQ号
       return {
         success: false,
         nickname: this.hideQQNumber(qqnumber),
@@ -228,9 +236,9 @@ export class ZanzhuPlugin extends plugin {
       const filename = `avatar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
       const filePath = path.join(this.tempDir, filename);
       
-      // 如果是HTTP而不是HTTPS，需要使用http模块
-      const useHttps = url.startsWith('https');
-      const requestModule = useHttps ? https : require('http');
+      // 判断使用HTTP还是HTTPS
+      const isHttps = url.startsWith('https');
+      const requestModule = isHttps ? https : http;
       
       const file = fs.createWriteStream(filePath);
       
@@ -300,7 +308,7 @@ export class ZanzhuPlugin extends plugin {
           rankIcon: this.getRankIcon(i),
           moneyStr: this.formatMoney(item.money),
           hiddenQQ: this.hideQQNumber(item.qqnumber),
-          originalQQ: item.qqnumber // 保存原始QQ号
+          originalQQ: item.qqnumber // 保存原始QQ号用于调试
         });
       }
 
@@ -324,7 +332,7 @@ export class ZanzhuPlugin extends plugin {
           messageParts.push(segment.image(`file:///${avatarPath}`));
           messageParts.push('\n');
           
-          // 添加用户信息 - 使用从API获取的用户名
+          // 添加用户信息 - 使用从API获取的用户名，显示隐藏的QQ号
           messageParts.push(`${sponsor.rankIcon} ${sponsor.qqInfo.nickname}\n`);
           messageParts.push(`📱 QQ: ${sponsor.hiddenQQ}\n`);
           messageParts.push(`💰 金额: ${sponsor.moneyStr}\n`);
@@ -357,7 +365,7 @@ export class ZanzhuPlugin extends plugin {
         for (let i = 0; i < others.length; i++) {
           const sponsor = others[i];
           const rankNumber = i + 4; // 从第4名开始
-          messageParts.push(`${rankNumber}. ${sponsor.qqInfo.nickname} (${sponsor.hiddenQQ}) - ${sponsor.moneyStr}\n`);
+          messageParts.push(`${rankNumber}. ${sponsor.qqInfo.nickname} - ${sponsor.moneyStr}\n`);
         }
         
         // 如果还有更多赞助者，显示省略号
