@@ -29,12 +29,15 @@ export class QQHead extends plugin {
   }
 
   async getQQHead(e) {
-    const qq = e.msg.match(/^#?(QQ|qq)头像\\s*(\\d+)$/)[2];
+    const matchRes = e.msg.match(/^#?(QQ|qq)头像\s*(\d+)$/);
+    if (!matchRes || !matchRes[2]) {
+      return await e.reply("请输入正确格式，示例：\nqq头像10001\nQQ头像 123456", true);
+    }
+    const qq = matchRes[2];
     const data = await this.requestApi(qq);
     if (data.code !== 1 || !data.data) {
       return await e.reply(data.msg || "查询失败，可能是QQ号无效", true);
     }
-    
     await e.reply(segment.image(data.data), true);
   }
 }
