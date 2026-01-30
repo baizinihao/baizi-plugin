@@ -3,9 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import common from '../../../lib/common/common.js';
 
-// 配置文件路径：plugins/baizi-plugin/config/广播.json
 const configPath = path.join(process.cwd(), 'plugins', 'baizi-plugin', 'config', '广播.json');
-// 自动创建配置目录和文件（含延迟+白/黑名单所有配置）
 if (!fs.existsSync(path.dirname(configPath))) {
   fs.mkdirSync(path.dirname(configPath), { recursive: true });
 }
@@ -19,19 +17,18 @@ if (!fs.existsSync(configPath)) {
   };
   fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
 }
-// 读取统一配置
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
 export class example2 extends plugin {
   constructor() {
     super({
       name: '广播通知',
-      dsc: '[@白子]广播通知',
+      dsc: '广播通知，兼容带/不带#，支持全群/白名单/黑名单',
       event: 'message',
       priority: 5000,
       rule: [
         {
-          reg: '^#(白名单|黑名单)?广播通知$',
+          reg: '^#?(白名单|黑名单)?广播通知$',
           fnc: 'broadcast'
         }
       ]
@@ -40,17 +37,28 @@ export class example2 extends plugin {
 
   async broadcast(e) {
     if (!e.isMaster) return true;
-    await e.reply(`请发送你要广播的内容`);
+    // 优化提示语，明确告知发送内容
+    await e.reply(`请发送需要广播的内容，发送后将立即执行对应广播`);
     this.setContext('broadcast_');
+    // 记录广播类型（全群/白名单/黑名单），避免后续匹配内容出错
+    this.broadcastType = e.msg.match(/^#?(白名单|黑名单)?广播通知$/)[1];
   }
 
   async broadcast_(e) {
     this.finish('broadcast_');
-    const msg = e.msg.match(/^#(白名单|黑名单)?广播通知$/);
-    console.log(e.msg);
+    // 获取用户实际发送的广播内容，而非指令
+    const broadcastContent = e.msg.trim();
+    // 新增：广播内容判空
+    if (!broadcastContent) {
+      await e.reply(`广播内容不能为空，请重新触发指令并发送内容`);
+      return true;
+    }
+    // 获取之前记录的广播类型（全群/白名单/黑名单）
+    const type = this.broadcastType;
     let targetGroups = [];
+
     // 全群广播
-    if (!msg[1]) {
+    if (!type) {
       const all_group = Array.from(Bot[e.self_id].gl.values());
       targetGroups = all_group.map(item => item.group_id);
       if (targetGroups.length === 0) {
@@ -59,31 +67,32 @@ export class example2 extends plugin {
       }
     } 
     // 白名单广播
-    else if (msg[1] === '白名单') {
+    else if (type === '白名单') {
       if (!config.whiteGroup || config.whiteGroup.length === 0) {
         await e.reply(`广播配置中白名单为空，广播失败\n可前往plugins/baizi-plugin/config/广播.json配置`);
         return true;
       }
       targetGroups = config.whiteGroup;
     } 
-    // 黑名单广播（排除黑名单，发送其余所有群）
-    else if (msg[1] === '黑名单') {
+    // 黑名单广播（过滤黑名单，发送其余群）
+    else if (type === '黑名单') {
       if (!config.blackGroup || config.blackGroup.length === 0) {
         await e.reply(`广播配置中黑名单为空，广播失败\n可前往plugins/baizi-plugin/config/广播.json配置`);
         return true;
       }
       const all_group = Array.from(Bot[e.self_id].gl.values());
       const allGroupIds = all_group.map(item => item.group_id);
-      // 过滤掉黑名单群
       targetGroups = allGroupIds.filter(id => !config.blackGroup.includes(id));
       if (targetGroups.length === 0) {
         await e.reply(`所有群均在黑名单中，无可用广播群`);
         return true;
       }
     }
-    // 执行广播
-    await 发送消息(targetGroups, e.message, e);
-    await e.reply(`广播已完成，本次共向${targetGroups.length}个群发送消息`);
+
+    // 执行广播并提示
+    await e.reply(`开始执行${type || '全群'}广播，共${targetGroups.length}个目标群`);
+    await 发送消息(targetGroups, broadcastContent, e);
+    await e.reply(`${type || '全群'}广播已完成，本次共向${targetGroups.length}个群发送内容`);
     return true;
   }
 }
