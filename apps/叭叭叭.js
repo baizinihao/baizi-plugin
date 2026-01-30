@@ -5,7 +5,7 @@ export class SkySound extends plugin {
   constructor() {
     super({
       name: '光遇随机叫声',
-      dsc: '光遇叫声/随机光遇叫声，带/不带#均可触发',
+      dsc: '光遇叫声/随机光遇叫声',
       event: 'message',
       priority: 5000,
       rule: [
@@ -17,24 +17,20 @@ export class SkySound extends plugin {
 
   async getSound(e) {
     try {
-      await e.reply('正在获取光遇叫声～', true)
-      // 硬编码调用你的接口，5秒超时防卡死
+      // 直接调用接口，极简配置（和你手动访问完全一致）
       const res = await axios.get('http://baizihaoxiao.xin/API/sky3.php', {
-        timeout: 5000,
-        responseType: 'text'
+        timeout: 10000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
       })
-      // 清洗链接：去空格/换行/空字符，避免CQ码出错
-      const audioUrl = res.data.replace(/\s|\n|\r/g, '').trim()
-      // 严格校验有效音频链接
-      if (!audioUrl || !audioUrl.startsWith('http')) {
-        return await e.reply('获取失败，接口未返回有效音频链接', true)
-      }
-      // 构造TRSS原生CQ音频码，绕开segment，直接发送
-      const audioCQ = `[CQ:audio,url=${audioUrl}]`
-      await e.reply(audioCQ)
+      // 仅做简单去空格，完全保留接口返回的链接
+      const audioUrl = res.data.trim()
+      // 直接构造音频CQ码，加true关闭转义（核心修复！）
+      await e.reply(`[CQ:audio,url=${audioUrl}]`, true)
     } catch (err) {
-      // 详细错误提示，方便排查接口/网络问题
-      await e.reply(`获取失败：${err.message || '网络/接口超时/异常'}`, true)
+      // 极简错误提示，接口正常则不会走到这步
+      await e.reply(`获取失败：${err.message}`)
     }
   }
 }
