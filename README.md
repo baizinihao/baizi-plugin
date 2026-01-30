@@ -19,6 +19,7 @@
   <summary>展开/收起</summary>
 ）
 #### 🔧Yunzai 根目录执行命令安装
+git clone https://github.com/baizinihao/baizi-plugin.git ./plugins/baizi-plugin
 
 #### 🔧 安装依赖
 ```bash
