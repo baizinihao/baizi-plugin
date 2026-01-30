@@ -6,19 +6,21 @@ import path from 'path'
 import common from '../../../lib/common/common.js'
 
 const configPath = path.join(process.cwd(), 'plugins', 'baizi-plugin', 'config', '广播')
-if (!fsSync.existsSync(path.dirname(configPath))) {
-    fsSync.mkdirSync(path.dirname(configPath), { recursive: true })
-}
-if (!fsSync.existsSync(configPath)) {
-    const defaultConfig = {
-        delays: false,
-        Nnumber: 5000,
-        random_delays: true
+let config = { delays: false, Nnumber: 5000, random_delays: true }
+
+// 初始化配置（无顶层await，避免上下文错乱）
+function initConfig() {
+    if (!fsSync.existsSync(path.dirname(configPath))) {
+        fsSync.mkdirSync(path.dirname(configPath), { recursive: true })
     }
-    fsSync.writeFileSync(configPath, yaml.stringify(defaultConfig), 'utf8')
+    if (!fsSync.existsSync(configPath)) {
+        fsSync.writeFileSync(configPath, yaml.stringify(config), 'utf8')
+    } else {
+        const file = fsSync.readFileSync(configPath, 'utf8')
+        config = yaml.parse(file) || config
+    }
 }
-const configFile = await fs.readFile(configPath, 'utf8')
-const config = yaml.parse(configFile)
+initConfig()
 
 export class example2 extends plugin {
   constructor() {
@@ -44,6 +46,13 @@ export class example2 extends plugin {
 
   async broadcast_(e) {
     this.finish('broadcast_')
+    // 核心：获取用户发送的实际广播内容（触发指令后发的内容）
+    const broadcastContent = e.msg.trim()
+    if (!broadcastContent) {
+      await e.reply(`广播内容不能为空，请重新触发指令`)
+      return true
+    }
+    // 获取群聊列表
     let all_group = Array.from(Bot[e.self_id].gl.values())
     let all_groupid = []
     for (let item of all_group) {
@@ -53,7 +62,8 @@ export class example2 extends plugin {
       await e.reply(`未获取到任何群聊，广播失败`)
       return true
     }
-    await 发送消息(all_groupid, e.message, e)
+    // 广播实际内容
+    await 发送消息(all_groupid, broadcastContent, e)
     await e.reply(`广播已完成`)
   }
 }
@@ -71,7 +81,7 @@ async function 发送消息(group, message, e){
         }
         await Bot[e.self_id].pickGroup(item).sendMsg(message)
             .then(async () => await e.reply(`群${item}消息已送达，等待${number}毫秒后广播下一个群\n剩余${groupNumber}个群`))
-            .catch(async (err) => await e.reply(`群${item}消息发送失败，等待${number}毫秒后广播下一个群\n剩余${groupNumber}个群\n错误码:${err.code}\n错误信息:${err.message}`))
+            .catch(async (err) => await e.reply(`群${item}消息发送失败，等待${number}毫秒后广播下一个群\n剩余${groupNumber}个群\n错误：${err.message}`))
         await common.sleep(number)
     }
     return `OK`
