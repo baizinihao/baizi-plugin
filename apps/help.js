@@ -12,7 +12,7 @@ export class example extends plugin {
       priority: -10,
       rule: [
         {
-          reg: '^#?(baizi|白子)(菜单)(插件)?(命令|帮助|功能|指令|菜单)$',
+          reg: '^#?(baizi|白子)(插件)?(命令|帮助|功能|指令|菜单)$',
           fnc: 'help'
         }
       ]
