@@ -4,7 +4,7 @@ export class QQHead extends plugin {
   constructor() {
     super({
       name: "QQ头像获取",
-      dsc: "通过QQ号查询头像",
+      dsc: "通过QQ号查询",
       event: "message",
       priority: 5000,
       rule: [
@@ -35,9 +35,13 @@ export class QQHead extends plugin {
     }
     const qq = matchRes[2];
     const data = await this.requestApi(qq);
-    if (data.code !== 1 || !data.data) {
-      return await e.reply(data.msg || "查询失败，可能是QQ号无效", true);
+    if (data.code !== 1 || !data.data || !data.data.startsWith('http')) {
+      return await e.reply(data.msg || "查询失败，头像链接无效", true);
     }
-    await e.reply(segment.image(data.data), true);
+    try {
+      await e.reply([segment.image(data.data, { type: 'png' })], true);
+    } catch (err) {
+      await e.reply("头像发送失败，请稍后重试", true);
+    }
   }
 }
