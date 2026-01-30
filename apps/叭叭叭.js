@@ -1,26 +1,27 @@
-import plugin from '../../../lib/plugins/plugin.js';
-import axios from 'axios';
+import plugin from '@/lib/plugins/plugin.js';
 
-export default class 光遇随机叫声 extends plugin {
+export default class 光遇叫声 extends plugin {
   constructor() {
     super({
-      name: '随机光遇叫声',
-      dsc: '调用指定接口返回随机光遇叫声，',
+      name: '光遇随机叫声',
+      dsc: '调用接口返回光遇叫声，支持多指令触发',
       event: 'message',
-      priority: 5000,
-      rule: [{ reg: /^#?随机光遇叫声$/, fnc: 'getSkySound' }]
+      priority: 9999,
+      rule: [
+        { reg: /^#?随机光遇叫声$/, fnc: 'skySound' },
+        { reg: /^#?光遇叫声$/, fnc: 'skySound' }
+      ]
     });
   }
 
-  async getSkySound(e) {
-    const apiUrl = 'http://baizihaoxiao.xin/API/sky3.php';
-    const prefix = e.msg.startsWith('#') ? '#' : '';
+  async skySound(e) {
+    const pre = e.msg.startsWith('#') ? '#' : '';
     try {
-      const res = await axios.get(apiUrl);
-      await e.reply(`${prefix}${res.data || '光遇叫声触发成功～'}`);
-    } catch (err) {
-      await e.reply(`${prefix}接口调用失败，请稍后再试～`);
-      console.error(err);
+      const res = await fetch('http://baizihaoxiao.xin/API/sky3.php');
+      const data = await res.text();
+      await e.reply(pre + (data || '光遇叫声～'));
+    } catch {
+      await e.reply(pre + '光遇叫声接口调用失败～');
     }
   }
 }
