@@ -1,4 +1,4 @@
-import plugin from '../../lib/plugins/plugin.js';
+import plugin from '../../../lib/plugins/plugin.js';
 
 const CONFIG = {
   skyVoiceUrl: 'http://baizihaoxiao.xin/API/sky3.php',
