@@ -53,14 +53,14 @@ export class broadcastNotice extends plugin {
   // 显示广播帮助
   async broadcastHelp(e) {
     const helpText = [
-      '📚 广播通知插件帮助 📚',
+      '广播通知插件帮助',
       '',
-      '👑 主指令:',
+      '主指令:',
       '  #广播通知 - 向所有群发送广播',
       '  #白名单广播通知 - 向白名单群组发送广播',
       '  #黑名单广播通知 - 向黑名单群组发送广播',
       '',
-      '⚙️ 配置指令:',
+      '配置指令:',
       '  #广播开启 - 启用广播功能',
       '  #广播关闭 - 禁用广播功能',
       '  #广播设置 - 设置广播参数',
@@ -69,20 +69,20 @@ export class broadcastNotice extends plugin {
       '  #清理广播日志 - 清理过期日志',
       '  #广播帮助 - 显示此帮助信息',
       '',
-      '🔧 参数设置格式:',
+      '参数设置格式:',
       '  延迟 开/关 - 开启/关闭发送延迟',
-      '  延迟时间 毫秒数 - 设置延迟时间 (如: 延迟时间 5000)',
-      '  随机延迟 开/关 - 开启/关闭随机延迟 (4-6秒随机)',
-      '  日志保留 天数 - 设置日志保留天数 (如: 日志保留 30)',
+      '  延迟时间 毫秒数 - 设置延迟时间',
+      '  随机延迟 开/关 - 开启/关闭随机延迟',
+      '  日志保留 天数 - 设置日志保留天数',
       '',
-      '📝 使用流程:',
-      '  1. 使用 #广播设置 配置参数',
-      '  2. 使用 #广播状态 确认配置',
-      '  3. 使用 #广播通知 或 #白名单广播通知 或 #黑名单广播通知 开始广播',
+      '使用流程:',
+      '  1. 使用#广播设置配置参数',
+      '  2. 使用#广播状态确认配置',
+      '  3. 使用广播指令开始广播',
       '  4. 按照提示发送广播内容',
-      '  5. 输入 "确认" 开始发送',
+      '  5. 输入"确认"开始发送',
       '',
-      '⚠️ 注意事项:',
+      '注意事项:',
       '  - 广播内容不能为空',
       '  - 操作需要机器人管理员权限',
       '  - 建议在低峰时段进行广播',
@@ -145,13 +145,13 @@ export class broadcastNotice extends plugin {
       case '开启':
         config.enable = true
         await this.saveConfig(config)
-        await e.reply('✅ 广播通知功能已开启')
+        await e.reply('广播通知功能已开启')
         break
         
       case '关闭':
         config.enable = false
         await this.saveConfig(config)
-        await e.reply('❌ 广播通知功能已关闭')
+        await e.reply('广播通知功能已关闭')
         break
         
       case '设置':
@@ -171,12 +171,12 @@ export class broadcastNotice extends plugin {
   // 显示广播状态
   async showBroadcastStatus(e, config) {
     const status = [
-      '📊 广播通知状态',
-      `⚙️ 启用状态：${config.enable ? '✅ 已启用' : '❌ 已禁用'}`,
-      `⏱️ 延迟发送：${config.delays ? '✅ 已开启' : '❌ 已关闭'}`,
-      `⌛ 延迟时间：${config.Nnumber} 毫秒`,
-      `🎲 随机延迟：${config.random_delays ? '✅ 已开启' : '❌ 已关闭'}`,
-      `📅 日志保留：${config.log_retention_days} 天`
+      '广播通知状态',
+      `启用状态：${config.enable ? '已启用' : '已禁用'}`,
+      `延迟发送：${config.delays ? '已开启' : '已关闭'}`,
+      `延迟时间：${config.Nnumber} 毫秒`,
+      `随机延迟：${config.random_delays ? '已开启' : '已关闭'}`,
+      `日志保留：${config.log_retention_days} 天`
     ]
     
     // 获取日志目录信息
@@ -184,18 +184,18 @@ export class broadcastNotice extends plugin {
       await fs.access(this.logDir)
       const files = await fs.readdir(this.logDir)
       const logFiles = files.filter(f => f.endsWith('.json'))
-      status.push(`📁 日志文件：${logFiles.length} 个`)
+      status.push(`日志文件：${logFiles.length} 个`)
       
       if (logFiles.length > 0) {
         // 获取最新的日志文件
         const latestLog = await this.getLatestLog()
         if (latestLog) {
-          status.push(`📝 最近广播：${latestLog.time ? new Date(latestLog.time).toLocaleString() : '无记录'}`)
-          status.push(`👤 操作者：${latestLog.master || '未知'}`)
+          status.push(`最近广播：${latestLog.time ? new Date(latestLog.time).toLocaleString() : '无记录'}`)
+          status.push(`操作者：${latestLog.master || '未知'}`)
         }
       }
     } catch (error) {
-      status.push('📁 日志目录：尚未创建')
+      status.push('日志目录：尚未创建')
     }
     
     await e.reply(status.join('\n'))
@@ -209,7 +209,7 @@ export class broadcastNotice extends plugin {
       const logFiles = files.filter(f => f.endsWith('.json')).sort().reverse()
       
       if (logFiles.length === 0) {
-        await e.reply('📭 暂无广播日志记录')
+        await e.reply('暂无广播日志记录')
         return
       }
       
@@ -233,12 +233,10 @@ export class broadcastNotice extends plugin {
       logs.sort((a, b) => new Date(b.time) - new Date(a.time))
       const recentLogs = logs.slice(0, 5)
       
-      const logInfo = [
-        `📋 最近5次广播记录（共${logs.length}条记录）:`
-      ]
+      const logInfo = [`最近5次广播记录（共${logs.length}条记录）:`]
       
       recentLogs.forEach((log, index) => {
-        logInfo.push(`\n${index + 1}. ${log.time ? new Date(log.time).toLocaleString() : '未知时间'}`)
+        logInfo.push(`${index + 1}. ${log.time ? new Date(log.time).toLocaleString() : '未知时间'}`)
         logInfo.push(`   类型：${log.type || '未知'}`)
         logInfo.push(`   操作者：${log.master || '未知'}`)
         logInfo.push(`   结果：${log.success || 0}成功/${log.fail || 0}失败`)
@@ -249,26 +247,27 @@ export class broadcastNotice extends plugin {
       
     } catch (error) {
       console.error('[广播通知] 读取日志失败:', error)
-      await e.reply('❌ 读取广播日志失败，日志目录可能不存在')
+      await e.reply('读取广播日志失败，日志目录可能不存在')
     }
   }
 
   // 设置广播参数
   async setBroadcastConfig(e, config) {
     const currentSettings = [
-      '📝 当前设置:',
+      '当前设置:',
       `延迟发送：${config.delays ? '开启' : '关闭'}`,
       `延迟时间：${config.Nnumber} 毫秒`,
       `随机延迟：${config.random_delays ? '开启' : '关闭'}`,
       `日志保留：${config.log_retention_days} 天`,
       '',
-      '请发送设置参数，格式：',
-      '延迟 开/关',
-      '延迟时间 毫秒数',
-      '随机延迟 开/关',
-      '日志保留 天数',
+      '设置格式：命令=值',
+      '可用命令：',
+      '  延迟=开/关',
+      '  延迟时间=毫秒数',
+      '  随机延迟=开/关',
+      '  日志保留=天数',
       '',
-      '示例：延迟 开'
+      '示例：延迟=开'
     ]
     
     await e.reply(currentSettings.join('\n'))
@@ -280,47 +279,74 @@ export class broadcastNotice extends plugin {
     const config = await this.initConfig()
     const input = e.msg.trim()
     
-    if (input === '取消' || input === 'exit') {
-      await e.reply('❌ 设置已取消')
+    if (input === '取消') {
+      await e.reply('设置已取消')
       return
     }
     
-    if (input.includes('延迟 开')) {
-      config.delays = true
-      await this.saveConfig(config)
-      await e.reply('✅ 已开启延迟发送')
-    } else if (input.includes('延迟 关')) {
-      config.delays = false
-      await this.saveConfig(config)
-      await e.reply('✅ 已关闭延迟发送')
-    } else if (input.startsWith('延迟时间 ')) {
-      const time = parseInt(input.replace('延迟时间 ', ''))
-      if (!isNaN(time) && time >= 0) {
-        config.Nnumber = time
-        await this.saveConfig(config)
-        await e.reply(`✅ 延迟时间已设置为 ${time} 毫秒`)
-      } else {
-        await e.reply('❌ 请输入有效的毫秒数')
-      }
-    } else if (input.includes('随机延迟 开')) {
-      config.random_delays = true
-      await this.saveConfig(config)
-      await e.reply('✅ 已开启随机延迟')
-    } else if (input.includes('随机延迟 关')) {
-      config.random_delays = false
-      await this.saveConfig(config)
-      await e.reply('✅ 已关闭随机延迟')
-    } else if (input.startsWith('日志保留 ')) {
-      const days = parseInt(input.replace('日志保留 ', ''))
-      if (!isNaN(days) && days > 0) {
-        config.log_retention_days = days
-        await this.saveConfig(config)
-        await e.reply(`✅ 日志保留时间已设置为 ${days} 天`)
-      } else {
-        await e.reply('❌ 请输入有效的天数（大于0）')
-      }
-    } else {
-      await e.reply('❌ 设置格式错误，请重试\n输入"取消"退出设置')
+    // 解析命令格式：命令=值
+    const parts = input.split('=')
+    if (parts.length !== 2) {
+      await e.reply('设置格式错误，请使用"命令=值"的格式')
+      return
+    }
+    
+    const command = parts[0].trim()
+    const value = parts[1].trim()
+    
+    switch (command) {
+      case '延迟':
+        if (value === '开') {
+          config.delays = true
+          await this.saveConfig(config)
+          await e.reply('已开启延迟发送')
+        } else if (value === '关') {
+          config.delays = false
+          await this.saveConfig(config)
+          await e.reply('已关闭延迟发送')
+        } else {
+          await e.reply('参数错误，请使用"开"或"关"')
+        }
+        break
+        
+      case '延迟时间':
+        const time = parseInt(value)
+        if (!isNaN(time) && time >= 0) {
+          config.Nnumber = time
+          await this.saveConfig(config)
+          await e.reply(`延迟时间已设置为 ${time} 毫秒`)
+        } else {
+          await e.reply('请输入有效的毫秒数')
+        }
+        break
+        
+      case '随机延迟':
+        if (value === '开') {
+          config.random_delays = true
+          await this.saveConfig(config)
+          await e.reply('已开启随机延迟')
+        } else if (value === '关') {
+          config.random_delays = false
+          await this.saveConfig(config)
+          await e.reply('已关闭随机延迟')
+        } else {
+          await e.reply('参数错误，请使用"开"或"关"')
+        }
+        break
+        
+      case '日志保留':
+        const days = parseInt(value)
+        if (!isNaN(days) && days > 0) {
+          config.log_retention_days = days
+          await this.saveConfig(config)
+          await e.reply(`日志保留时间已设置为 ${days} 天`)
+        } else {
+          await e.reply('请输入有效的天数（大于0）')
+        }
+        break
+        
+      default:
+        await e.reply(`未知命令：${command}`)
     }
   }
 
@@ -333,7 +359,7 @@ export class broadcastNotice extends plugin {
       const logFiles = files.filter(f => f.endsWith('.json'))
       
       if (logFiles.length === 0) {
-        await e.reply('📭 暂无广播日志可清理')
+        await e.reply('暂无广播日志可清理')
         return
       }
       
@@ -355,11 +381,11 @@ export class broadcastNotice extends plugin {
         }
       }
       
-      await e.reply(`🧹 已清理 ${deletedCount} 个过期日志文件（保留 ${retentionDays} 天内）`)
+      await e.reply(`已清理 ${deletedCount} 个过期日志文件（保留 ${retentionDays} 天内）`)
       
     } catch (error) {
       console.error('[广播通知] 清理日志失败:', error)
-      await e.reply('❌ 清理广播日志失败')
+      await e.reply('清理广播日志失败')
     }
   }
 
@@ -369,7 +395,7 @@ export class broadcastNotice extends plugin {
     
     const config = await this.initConfig()
     if (!config.enable) {
-      await e.reply('❌ 广播通知功能已关闭，请使用 #广播开启 来启用')
+      await e.reply('广播通知功能已关闭，请使用 #广播开启 来启用')
       return true
     }
     
@@ -377,7 +403,7 @@ export class broadcastNotice extends plugin {
     if (!match) return true
     
     const broadcastType = match[1] || '全部'
-    await e.reply(`请发送你要广播的内容（${broadcastType}）\n\n⚠️ 广播内容不能为空，输入"取消"可以退出广播模式`)
+    await e.reply(`请发送你要广播的内容（${broadcastType}）\n\n广播内容不能为空，输入"取消"可以退出广播模式`)
     
     // 保存广播类型到上下文
     this.broadcastType = broadcastType
@@ -388,8 +414,8 @@ export class broadcastNotice extends plugin {
     this.finish('broadcast_content_')
     
     // 检查用户是否要取消
-    if (e.msg === '取消' || e.msg === 'exit') {
-      await e.reply('❌ 广播已取消')
+    if (e.msg === '取消') {
+      await e.reply('广播已取消')
       return true
     }
     
@@ -400,7 +426,7 @@ export class broadcastNotice extends plugin {
       
       // 检查消息是否为空
       if (!message || message.trim().length === 0) {
-        await e.reply('❌ 广播内容不能为空，请重新发送广播内容或输入"取消"退出')
+        await e.reply('广播内容不能为空，请重新发送广播内容或输入"取消"退出')
         // 重新设置上下文等待用户输入
         this.broadcastType = broadcastType
         this.setContext('broadcast_content_')
@@ -433,20 +459,18 @@ export class broadcastNotice extends plugin {
       }
       
       if (groups.length === 0) {
-        await e.reply(`❌ ${description}为空，广播失败`)
+        await e.reply(`${description}为空，广播失败`)
         return true
       }
       
       // 显示广播预览
       const preview = [
-        `📝 广播预览（${description}）：`,
-        `────────────────`,
+        `广播预览（${description}）：`,
         `${message}`,
-        `────────────────`,
-        `📊 共 ${groups.length} 个群组`,
-        `⏱️ 延迟发送：${config.delays ? '开启' : '关闭'}`,
-        `⌛ 延迟时间：${config.delays ? config.Nnumber + ' 毫秒' : '无'}`,
-        `🎲 随机延迟：${config.random_delays ? '开启' : '关闭'}`,
+        `共 ${groups.length} 个群组`,
+        `延迟发送：${config.delays ? '开启' : '关闭'}`,
+        `延迟时间：${config.delays ? config.Nnumber + ' 毫秒' : '无'}`,
+        `随机延迟：${config.random_delays ? '开启' : '关闭'}`,
         ``,
         `是否确认发送？`,
         `回复"确认"开始广播，输入"取消"退出`
@@ -458,7 +482,7 @@ export class broadcastNotice extends plugin {
       
     } catch (error) {
       console.error('[广播通知] 处理广播内容失败:', error)
-      await e.reply('❌ 处理广播内容时出现错误')
+      await e.reply('处理广播内容时出现错误')
     }
   }
 
@@ -466,14 +490,14 @@ export class broadcastNotice extends plugin {
     this.finish('broadcast_confirm_')
     
     if (e.msg !== '确认') {
-      await e.reply('❌ 广播已取消')
+      await e.reply('广播已取消')
       return true
     }
     
     const { groups, message, description, config } = this.broadcastData
     
     // 开始广播
-    await e.reply(`🚀 开始广播，共 ${groups.length} 个${description}`)
+    await e.reply(`开始广播，共 ${groups.length} 个${description}`)
     
     let successCount = 0
     let failCount = 0
@@ -496,7 +520,7 @@ export class broadcastNotice extends plugin {
         // 发送消息
         await Bot[e.self_id].pickGroup(groupId).sendMsg(message)
         successCount++
-        results.push(`✅ 群 ${groupId} 发送成功`)
+        results.push(`群 ${groupId} 发送成功`)
         
         // 每10个群报告一次进度
         if ((i + 1) % 10 === 0 || i === groups.length - 1) {
@@ -511,7 +535,7 @@ export class broadcastNotice extends plugin {
       } catch (error) {
         failCount++
         const errorMsg = `群 ${groupId} 发送失败: ${error.code || '未知错误'} - ${error.message || '未知原因'}`
-        results.push(`❌ ${errorMsg}`)
+        results.push(`${errorMsg}`)
         failDetails.push(errorMsg)
         console.error(`[广播通知] 发送到群 ${groupId} 失败:`, error)
       }
@@ -520,16 +544,16 @@ export class broadcastNotice extends plugin {
     // 生成报告
     const successRate = ((successCount / groups.length) * 100).toFixed(2)
     const report = [
-      '📊 广播完成报告',
-      `📈 总群数：${groups.length}`,
-      `✅ 成功：${successCount}`,
-      `❌ 失败：${failCount}`,
-      `📋 成功率：${successRate}%`,
-      `⏱️ 总耗时：约 ${Math.round((groups.length - 1) * (config.delays ? config.Nnumber : 0) / 1000)} 秒`
+      '广播完成报告',
+      `总群数：${groups.length}`,
+      `成功：${successCount}`,
+      `失败：${failCount}`,
+      `成功率：${successRate}%`,
+      `总耗时：约 ${Math.round((groups.length - 1) * (config.delays ? config.Nnumber : 0) / 1000)} 秒`
     ]
     
     if (failCount > 0) {
-      report.push('\n❌ 失败详情（前10个）：')
+      report.push('失败详情（前10个）：')
       failDetails.slice(0, 10).forEach((detail, index) => {
         report.push(`${index + 1}. ${detail}`)
       })
@@ -537,7 +561,7 @@ export class broadcastNotice extends plugin {
         report.push(`... 还有 ${failDetails.length - 10} 个失败`)
       }
     } else {
-      report.push('\n🎉 所有群组发送成功！')
+      report.push('所有群组发送成功！')
     }
     
     await e.reply(report.join('\n'))
@@ -551,7 +575,7 @@ export class broadcastNotice extends plugin {
       success: successCount,
       fail: failCount,
       success_rate: successRate,
-      message: message.slice(0, 100) + (message.length > 100 ? '...' : '') // 只保存前100字符
+      message: message.slice(0, 100) + (message.length > 100 ? '...' : '')
     })
   }
 
