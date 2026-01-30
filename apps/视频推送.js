@@ -1,7 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js';
 import fs from 'fs';
 import path from 'path';
-import { segment, logger, Bot } from 'koishi'; // 补全koishi内置对象
 
 const CONFIG_PATH = path.resolve(process.cwd(), './plugins/baizi-plugin/apps/config/风景视频.json');
 
@@ -13,7 +12,7 @@ const initConfig = () => {
       videoUrl: 'http://baizihaoxiao.xin/API/feng.php',
       autoPush: {
         groupList: [],
-        interval: 60, // 分钟，默认1小时
+        interval: 60,
         isRunning: false
       },
       triggerCmds: ['风景视频', '#风景视频']
@@ -23,25 +22,23 @@ const initConfig = () => {
 };
 
 let CONFIG = initConfig();
-let pushTimer = null; // 替换interval为timer，避免累计误差
-let isPushing = false; // 全局推送锁，防止重复执行
+let pushTimer = null;
+let isPushing = false;
 
 const saveConfig = (newConfig) => {
   CONFIG = { ...CONFIG, ...newConfig };
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(CONFIG, null, 2));
-  restartPushJob(); // 重新调度，使配置立即生效
+  restartPushJob();
 };
 
-// 计算下一个推送的整点时间（核心：解决非整点问题）
 const getNextPushTime = () => {
   const now = new Date();
   const intervalMin = CONFIG.autoPush.interval;
-  // 计算下一个目标时间：当前时间 + 间隔，且取整点
   const nextTime = new Date(now);
-  nextTime.setMinutes(0, 0, 0); // 先置为当前整点
-  nextTime.setHours(nextTime.getHours() + Math.ceil(intervalMin / 60)); // 按间隔加小时
-  // 若间隔小于60分钟，按分钟级整点（如30分钟：0/30分）
-  if (intervalMin < 60) {
+  if (intervalMin >= 60) {
+    nextTime.setMinutes(0, 0, 0);
+    nextTime.setHours(nextTime.getHours() + Math.ceil(intervalMin / 60));
+  } else {
     nextTime.setMinutes(Math.ceil(now.getMinutes() / intervalMin) * intervalMin, 0, 0);
     if (nextTime.getMinutes() === 60) {
       nextTime.setHours(nextTime.getHours() + 1);
@@ -51,7 +48,6 @@ const getNextPushTime = () => {
   return nextTime;
 };
 
-// 启动推送任务（整点版）
 const startPushJob = () => {
   if (CONFIG.autoPush.groupList.length === 0 || pushTimer) return;
   const nextTime = getNextPushTime();
@@ -66,7 +62,6 @@ const startPushJob = () => {
       if (!res.ok) throw new Error(`状态码：${res.status}`);
       const videoUrl = res.url;
       const uniqueGroups = [...new Set(CONFIG.autoPush.groupList)];
-      // 逐群推送，增加间隔避免风控
       for (const gid of uniqueGroups) {
         try {
           await Bot.sendGroupMsg(gid, [segment.video(videoUrl)]);
@@ -80,12 +75,11 @@ const startPushJob = () => {
     } finally {
       isPushing = false;
       pushTimer = null;
-      startPushJob(); // 调度下一次推送
+      startPushJob();
     }
   }, delay);
 };
 
-// 停止推送任务
 const stopPushJob = () => {
   if (pushTimer) {
     clearTimeout(pushTimer);
@@ -94,7 +88,6 @@ const stopPushJob = () => {
   isPushing = false;
 };
 
-// 重启推送任务（配置变更时调用）
 const restartPushJob = () => {
   stopPushJob();
   startPushJob();
@@ -116,7 +109,7 @@ export default class SceneryVideo extends plugin {
         { reg: '^设置风景推送间隔.*$', fnc: 'setPushInterval', permission: 'master' }
       ]
     });
-    startPushJob(); // 初始化启动
+    startPushJob();
   }
 
   async sendVideo(e) {
