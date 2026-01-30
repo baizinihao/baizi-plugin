@@ -1,11 +1,11 @@
 import plugin from '../../../lib/plugins/plugin.js';
-import yaml from 'yaml';
 import fs from 'fs';
-import { promises as fsPromises } from 'fs';
 import path from 'path';
 import common from '../../../lib/common/common.js';
 
+// 配置文件路径：plugins/baizi-plugin/config/广播.json
 const configPath = path.join(process.cwd(), 'plugins', 'baizi-plugin', 'config', '广播.json');
+// 自动创建配置目录和文件（含延迟+白/黑名单所有配置）
 if (!fs.existsSync(path.dirname(configPath))) {
   fs.mkdirSync(path.dirname(configPath), { recursive: true });
 }
@@ -13,10 +13,13 @@ if (!fs.existsSync(configPath)) {
   const defaultConfig = {
     delays: true,
     Nnumber: 5000,
-    random_delays: false
+    random_delays: false,
+    whiteGroup: [],
+    blackGroup: []
   };
   fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
 }
+// 读取统一配置
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
 export class example2 extends plugin {
@@ -45,42 +48,42 @@ export class example2 extends plugin {
     this.finish('broadcast_');
     const msg = e.msg.match(/^#(白名单|黑名单)?广播通知$/);
     console.log(e.msg);
-    const otherYamlPath = path.join(process.cwd(), 'config', 'other.yaml');
-    // 检查other.yaml是否存在
-    if (!fs.existsSync(otherYamlPath)) {
-      if (msg[1]) {
-        await e.reply(`未找到配置文件：${otherYamlPath}\n无法使用${msg[1]}广播，请先创建配置文件并配置白/黑名单`);
-        return true;
-      }
-      // 无配置文件则直接执行全群广播
-      const all_group = Array.from(Bot[e.self_id].gl.values());
-      const targetGroups = all_group.map(item => item.group_id);
-      await 发送消息(targetGroups, e.message, e);
-      await e.reply(`广播已完成（未找到白/黑名单配置文件，执行全群广播）`);
-      return true;
-    }
-    // 配置文件存在则正常读取
-    const otheryaml = await fsPromises.readFile(otherYamlPath, 'utf-8');
-    const other = yaml.parse(otheryaml);
     let targetGroups = [];
+    // 全群广播
     if (!msg[1]) {
       const all_group = Array.from(Bot[e.self_id].gl.values());
       targetGroups = all_group.map(item => item.group_id);
-    } else if (msg[1] === '白名单') {
-      if (!other.whiteGroup || other.whiteGroup.length === 0) {
-        await e.reply(`白名单为空，广播失败`);
+      if (targetGroups.length === 0) {
+        await e.reply(`未获取到任何群聊，广播失败`);
         return true;
       }
-      targetGroups = other.whiteGroup;
-    } else if (msg[1] === '黑名单') {
-      if (!other.blackGroup || other.blackGroup.length === 0) {
-        await e.reply(`黑名单为空，广播失败`);
+    } 
+    // 白名单广播
+    else if (msg[1] === '白名单') {
+      if (!config.whiteGroup || config.whiteGroup.length === 0) {
+        await e.reply(`广播配置中白名单为空，广播失败\n可前往plugins/baizi-plugin/config/广播.json配置`);
         return true;
       }
-      targetGroups = other.blackGroup;
+      targetGroups = config.whiteGroup;
+    } 
+    // 黑名单广播（排除黑名单，发送其余所有群）
+    else if (msg[1] === '黑名单') {
+      if (!config.blackGroup || config.blackGroup.length === 0) {
+        await e.reply(`广播配置中黑名单为空，广播失败\n可前往plugins/baizi-plugin/config/广播.json配置`);
+        return true;
+      }
+      const all_group = Array.from(Bot[e.self_id].gl.values());
+      const allGroupIds = all_group.map(item => item.group_id);
+      // 过滤掉黑名单群
+      targetGroups = allGroupIds.filter(id => !config.blackGroup.includes(id));
+      if (targetGroups.length === 0) {
+        await e.reply(`所有群均在黑名单中，无可用广播群`);
+        return true;
+      }
     }
+    // 执行广播
     await 发送消息(targetGroups, e.message, e);
-    await e.reply(`广播已完成`);
+    await e.reply(`广播已完成，本次共向${targetGroups.length}个群发送消息`);
     return true;
   }
 }
