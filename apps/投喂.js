@@ -296,11 +296,11 @@ export class ZanzhuPlugin extends plugin {
         });
       }
 
-      // 构建消息内容
-      let message = '';
+      // 构建消息数组
+      const messageParts = [];
       
       // 标题部分
-      message += '💰 白子の投喂榜 💰\n\n';
+      messageParts.push('💖 白子の投喂榜 💖\n\n');
       
       // 前三名显示头像和详细信息
       const topThree = sponsors.slice(0, 3);
@@ -312,32 +312,35 @@ export class ZanzhuPlugin extends plugin {
           // 下载头像
           const avatarPath = await this.downloadImage(sponsor.qqInfo.avatar);
           
-          // 添加头像和用户信息
-          message += segment.image(`file:///${avatarPath}`) + '\n';
-          message += `${sponsor.rankIcon} ${sponsor.qqInfo.nickname}\n`;
-          message += `📧 ID: ${sponsor.hiddenQQ}\n`;
-          message += `💰 ${sponsor.moneyStr}\n`;
+          // 添加头像到消息数组
+          messageParts.push(segment.image(`file:///${avatarPath}`));
+          messageParts.push('\n');
+          
+          // 添加用户信息
+          messageParts.push(`${sponsor.rankIcon} ${sponsor.qqInfo.nickname}\n`);
+          messageParts.push(`📧 ID: ${sponsor.hiddenQQ}\n`);
+          messageParts.push(`💰 ${sponsor.moneyStr}\n`);
           
           // 添加分隔线（除了最后一个）
           if (i < topThree.length - 1 || sponsors.length > 3) {
-            message += '══════════════════\n';
+            messageParts.push('══════════════════\n');
           }
         } catch (error) {
           console.error(`下载头像失败 (${sponsor.qqnumber}):`, error.message);
           // 如果下载失败，只显示文字信息
-          message += `${sponsor.rankIcon} ${sponsor.qqInfo.nickname}\n`;
-          message += `📧 ID: ${sponsor.hiddenQQ}\n`;
-          message += `💰 ${sponsor.moneyStr}\n`;
+          messageParts.push(`${sponsor.rankIcon} ${sponsor.qqInfo.nickname}\n`);
+          messageParts.push(`📧 ID: ${sponsor.hiddenQQ}\n`);
+          messageParts.push(`💰 ${sponsor.moneyStr}\n`);
           
           if (i < topThree.length - 1 || sponsors.length > 3) {
-            message += '══════════════════\n';
+            messageParts.push('══════════════════\n');
           }
         }
       }
       
       // 第四名及之后显示文字列表
       if (sponsors.length > 3) {
-        message += '\n🏆 其他投喂者:\n';
+        messageParts.push('\n🏆 其他投喂者:\n');
         
         // 限制显示数量，避免消息过长
         const maxDisplay = Math.min(sponsors.length, 20); // 最多显示20名
@@ -346,16 +349,16 @@ export class ZanzhuPlugin extends plugin {
         for (let i = 0; i < others.length; i++) {
           const sponsor = others[i];
           const rankNumber = i + 4; // 从第4名开始
-          message += `${rankNumber}. ${sponsor.qqInfo.nickname} - ${sponsor.moneyStr}\n`;
+          messageParts.push(`${rankNumber}. ${sponsor.qqInfo.nickname} - ${sponsor.moneyStr}\n`);
         }
         
         // 如果还有更多赞助者，显示省略号
         if (sponsors.length > maxDisplay) {
           const remaining = sponsors.length - maxDisplay;
-          message += `...等 ${remaining} 位投喂者\n`;
+          messageParts.push(`...等 ${remaining} 位投喂者\n`);
         }
         
-        message += '\n';
+        messageParts.push('\n');
       }
       
       // 计算统计信息
@@ -365,18 +368,18 @@ export class ZanzhuPlugin extends plugin {
       const maxAmount = sponsors.length > 0 ? Math.max(...sponsors.map(item => item.money)) : 0;
 
       // 添加统计信息
-      message += '📊 统计信息:\n';
-      message += '────────────────────\n';
-      message += `✨ 累计金额: ${this.formatMoney(totalAmount)}\n`;
-      message += `👥 投喂人数: ${totalSponsors}人\n`;
-      message += `📈 人均投喂: ${this.formatMoney(avgAmount)}\n`;
-      message += `🏅 最高投喂: ${this.formatMoney(maxAmount)}\n`;
-      message += '────────────────────\n';
-      message += '💰 感谢各位大大的支持！\n';
-      message += '© liusu 2024-2026';
+      messageParts.push('📊 统计信息:\n');
+      messageParts.push('────────────────────\n');
+      messageParts.push(`✨ 累计金额: ${this.formatMoney(totalAmount)}\n`);
+      messageParts.push(`👥 投喂人数: ${totalSponsors}人\n`);
+      messageParts.push(`📈 人均投喂: ${this.formatMoney(avgAmount)}\n`);
+      messageParts.push(`🏅 最高投喂: ${this.formatMoney(maxAmount)}\n`);
+      messageParts.push('────────────────────\n');
+      messageParts.push('💕 感谢各位大大的支持！\n');
+      messageParts.push('© liusu 2024-2026');
 
-      // 发送消息
-      await e.reply(message);
+      // 发送消息 - 直接传递消息数组
+      await e.reply(messageParts);
 
       // 清理临时文件
       this.cleanOldAvatarFiles();
