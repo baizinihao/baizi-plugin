@@ -19,15 +19,15 @@ export class AddZanzhuPlugin extends plugin {
       priority: 1,
       rule: [
         {
-          reg: '^#?赞助添加\\s*(\\d+):(\\d+(\\.\\d+)?)$',
+          reg: '^#?(赞助|投喂)添加\\s*(\\d+):(\\d+(\\.\\d+)?)$',
           fnc: 'addZanzhu'
         },
         {
-          reg: '^#?赞助修改\\s*(\\d+):(\\d+(\\.\\d+)?)$',
+          reg: '^#?(赞助|投喂)修改\\s*(\\d+):(\\d+(\\.\\d+)?)$',
           fnc: 'updateZanzhu'
         },
         {
-          reg: '^#?赞助删除\\s*(\\d+)$',
+          reg: '^#?(赞助|投喂)删除\\s*(\\d+)$',
           fnc: 'deleteZanzhu'
         }
       ]
@@ -55,7 +55,7 @@ export class AddZanzhuPlugin extends plugin {
 
   async checkPermission(e) {
     const senderQQ = e.sender.user_id.toString();
-    const ownerQQ = '2937655991';
+    const ownerQQ = '2209176666';
     if (senderQQ !== ownerQQ) {
       await e.reply('您没有权限执行此操作，仅限主人操作。');
       return false;
@@ -66,14 +66,14 @@ export class AddZanzhuPlugin extends plugin {
   async addZanzhu(e) {
     if (!(await this.checkPermission(e))) return;
 
-    const match = e.msg.match(/^#?赞助添加\s*(\d+):(\d+(\.\d+)?)$/);
+    const match = e.msg.match(/^#?(赞助|投喂)添加\s*(\d+):(\d+(\.\d+)?)$/);
     if (!match) {
-      await e.reply('指令格式错误，请使用：#赞助添加 QQ号:金额');
+      await e.reply('指令格式错误，请使用：#赞助添加 QQ号:金额 或 #投喂添加 QQ号:金额');
       return;
     }
 
-    const qqnumber = match[1];
-    const money = parseFloat(match[2]);
+    const qqnumber = match[2];
+    const money = parseFloat(match[3]);
 
     if (isNaN(money)) {
       await e.reply('金额格式错误，请输入有效的金额。');
@@ -86,25 +86,25 @@ export class AddZanzhuPlugin extends plugin {
     if (existingRecord) {
       existingRecord.money += money;
       await this.saveData(data);
-      await e.reply(`已更新 QQ:${qqnumber} 的赞助记录，新增金额：¥${money.toFixed(2)}，累计金额：¥${existingRecord.money.toFixed(2)}`);
+      await e.reply(`已更新 QQ:${qqnumber} 的投喂记录，新增金额：¥${money.toFixed(2)}，累计金额：¥${existingRecord.money.toFixed(2)}`);
     } else {
       data.push({ qqnumber, money });
       await this.saveData(data);
-      await e.reply(`已添加 QQ:${qqnumber} 的赞助记录，金额：¥${money.toFixed(2)}`);
+      await e.reply(`已添加 QQ:${qqnumber} 的投喂记录，金额：¥${money.toFixed(2)}`);
     }
   }
 
   async updateZanzhu(e) {
     if (!(await this.checkPermission(e))) return;
 
-    const match = e.msg.match(/^#?赞助修改\s*(\d+):(\d+(\.\d+)?)$/);
+    const match = e.msg.match(/^#?(赞助|投喂)修改\s*(\d+):(\d+(\.\d+)?)$/);
     if (!match) {
-      await e.reply('指令格式错误，请使用：#赞助修改 QQ号:新金额');
+      await e.reply('指令格式错误，请使用：#赞助修改 QQ号:新金额 或 #投喂修改 QQ号:新金额');
       return;
     }
 
-    const qqnumber = match[1];
-    const newMoney = parseFloat(match[2]);
+    const qqnumber = match[2];
+    const newMoney = parseFloat(match[3]);
 
     if (isNaN(newMoney)) {
       await e.reply('金额格式错误，请输入有效的金额。');
@@ -115,33 +115,33 @@ export class AddZanzhuPlugin extends plugin {
     const recordIndex = data.findIndex(item => item.qqnumber === qqnumber);
 
     if (recordIndex === -1) {
-      await e.reply(`未找到 QQ:${qqnumber} 的赞助记录`);
+      await e.reply(`未找到 QQ:${qqnumber} 的投喂记录`);
     } else {
       data[recordIndex].money = newMoney;
       await this.saveData(data);
-      await e.reply(`已将 QQ:${qqnumber} 的赞助金额修改为 ¥${newMoney.toFixed(2)}`);
+      await e.reply(`已将 QQ:${qqnumber} 的投喂金额修改为 ¥${newMoney.toFixed(2)}`);
     }
   }
 
   async deleteZanzhu(e) {
     if (!(await this.checkPermission(e))) return;
 
-    const match = e.msg.match(/^#?赞助删除\s*(\d+)$/);
+    const match = e.msg.match(/^#?(赞助|投喂)删除\s*(\d+)$/);
     if (!match) {
-      await e.reply('指令格式错误，请使用：#赞助删除 QQ号');
+      await e.reply('指令格式错误，请使用：#赞助删除 QQ号 或 #投喂删除 QQ号');
       return;
     }
 
-    const qqnumber = match[1];
+    const qqnumber = match[2];
     const data = await this.getData();
     const recordIndex = data.findIndex(item => item.qqnumber === qqnumber);
 
     if (recordIndex === -1) {
-      await e.reply(`未找到 QQ:${qqnumber} 的赞助记录`);
+      await e.reply(`未找到 QQ:${qqnumber} 的投喂记录`);
     } else {
       data.splice(recordIndex, 1);
       await this.saveData(data);
-      await e.reply(`已删除 QQ:${qqnumber} 的赞助记录`);
+      await e.reply(`已删除 QQ:${qqnumber} 的投喂记录`);
     }
   }
 }
