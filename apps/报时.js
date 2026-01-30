@@ -1,7 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js';
 import fs from 'fs';
 import path from 'path';
-import { segment, logger, Bot } from 'koishi'; // 补全koishi内置对象
 
 const CONFIG_PATH = path.resolve(process.cwd(), './plugins/baizi-plugin/apps/config/报时.json');
 
@@ -21,26 +20,24 @@ const initConfig = () => {
 };
 
 let CONFIG = initConfig();
-let scheduleTimer = null; // 单例定时器，防止重复任务
-let isReporting = false; // 全局推送锁，防止重复发送
+let scheduleTimer = null;
+let isReporting = false;
 
 const saveConfig = (newConfig) => {
   CONFIG = { ...CONFIG, ...newConfig };
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(CONFIG, null, 2));
-  restartSchedule(); // 配置变更，重新调度
+  restartSchedule();
 };
 
-// 计算下一个整点的时间
 const getNextHour = () => {
   const now = new Date();
   const nextHour = new Date(now);
-  nextHour.setHours(now.getHours() + 1, 0, 0, 0); // 下一个整点，分秒毫秒置0
+  nextHour.setHours(now.getHours() + 1, 0, 0, 0);
   return nextHour;
 };
 
-// 整点调度核心方法（单例保障）
 const scheduleHourlyPush = () => {
-  if (scheduleTimer) return; // 已有定时器，直接返回，防止重复
+  if (scheduleTimer) return;
   const nextHour = getNextHour();
   const delay = nextHour - Date.now();
   logger.info(`[整点报时] 下次整点推送：${nextHour.toLocaleString()}，延迟：${Math.round(delay/1000)}秒`);
@@ -55,7 +52,6 @@ const scheduleHourlyPush = () => {
     try {
       const url = CONFIG.defaultType === 'male' ? CONFIG.maleUrl : CONFIG.femaleUrl;
       const uniqueGroups = [...new Set(CONFIG.autoPush.groupList)];
-      // 逐群推送，增加间隔避免风控，且先预取音频链接（避免重复请求接口）
       let audioUrl = '';
       const res = await fetch(url, { timeout: 15000 });
       if (res.ok) audioUrl = res.url;
@@ -64,7 +60,7 @@ const scheduleHourlyPush = () => {
       for (const gid of uniqueGroups) {
         try {
           await Bot.sendGroupMsg(gid, [segment.record(audioUrl)]);
-          await new Promise(resolve => setTimeout(resolve, 1000)); // 1秒间隔，防止刷屏
+          await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (err) {
           logger.error(`[整点报时] 群${gid}推送失败：`, err);
         }
@@ -74,12 +70,11 @@ const scheduleHourlyPush = () => {
     } finally {
       isReporting = false;
       scheduleTimer = null;
-      scheduleHourlyPush(); // 调度下一个整点
+      scheduleHourlyPush();
     }
   }, delay);
 };
 
-// 停止调度
 const stopSchedule = () => {
   if (scheduleTimer) {
     clearTimeout(scheduleTimer);
@@ -88,7 +83,6 @@ const stopSchedule = () => {
   isReporting = false;
 };
 
-// 重启调度
 const restartSchedule = () => {
   stopSchedule();
   scheduleHourlyPush();
@@ -110,7 +104,7 @@ export default class HourlyReport extends plugin {
         { reg: '^切换报时版本.*$', fnc: 'switchType', permission: 'master' }
       ]
     });
-    scheduleHourlyPush(); // 初始化启动单例调度
+    scheduleHourlyPush();
   }
 
   async sendReport(e) {
