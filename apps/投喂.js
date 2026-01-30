@@ -229,7 +229,7 @@ export class ZanzhuPlugin extends plugin {
       const messageParts = [];
       
       // 标题部分
-      messageParts.push('💖 白子の投喂榜 💖\n\n');
+      messageParts.push('❄️ 白子の投喂榜 ❄️\n\n');
       
       // 获取前三名的头像URL（并发获取，超时15秒）
       const topThree = sponsors.slice(0, 3);
@@ -315,7 +315,7 @@ export class ZanzhuPlugin extends plugin {
       messageParts.push(`📈 人均投喂: ${this.formatMoney(avgAmount)}\n`);
       messageParts.push(`🏅 最高投喂: ${this.formatMoney(maxAmount)}\n`);
       messageParts.push('══════════════════════\n');
-      messageParts.push('💕 感谢各位大大的支持！\n');
+      messageParts.push('🌚 感谢各位大大的支持！\n');
       messageParts.push('© liusu 2024-2026');
 
       // 发送消息 - 直接传递消息数组
