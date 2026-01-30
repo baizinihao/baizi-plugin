@@ -26,11 +26,20 @@ const saveConfig = (newConfig) => {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(CONFIG, null, 2));
 };
 
+// 带浏览器请求头（防反爬）+ 超时的fetch，适配直返音频API
 const fetchWithTimeout = async (url, timeout = 15000) => {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Referer': 'http://baizihaoxiao.xin/',
+        'Accept': '*/*',
+        'Connection': 'keep-alive'
+      }
+    });
     clearTimeout(id);
     return res;
   } catch (err) {
@@ -92,9 +101,10 @@ export default class HourlyReport extends plugin {
     try {
       const res = await fetchWithTimeout(url);
       if (!res.ok) throw new Error(`音频接口返回异常，状态码：${res.status}`);
+      const audioUrl = res.url; // 直取音频链接
       for (const gid of uniqueGroups) {
         try {
-          await Bot.sendGroupMsg(gid, [segment.record(res.url)]);
+          await Bot.sendGroupMsg(gid, [segment.record(audioUrl)]);
           logger.info(`[整点报时] 群${gid}推送成功`);
         } catch (err) {
           logger.error(`[整点报时] 群${gid}推送失败：`, err);
@@ -112,7 +122,7 @@ export default class HourlyReport extends plugin {
       if (e.msg.includes('女版')) url = CONFIG.femaleUrl;
       const res = await fetchWithTimeout(url);
       if (!res.ok) throw new Error(`状态码：${res.status}`);
-      await e.reply([segment.record(res.url)]);
+      await e.reply([segment.record(res.url)]); // 直取音频链接
     } catch (err) {
       logger.error(`[整点报时] 手动调用失败：`, err);
       await e.reply('报时音频获取失败，请稍后重试~');
