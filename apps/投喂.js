@@ -40,38 +40,6 @@ export class ZanzhuPlugin extends plugin {
     if (!fs.existsSync(this.screenshotDir)) {
       fs.mkdirSync(this.screenshotDir, { recursive: true });
     }
-    
-    // 初始化浏览器
-    this.initBrowser();
-  }
-
-  async initBrowser() {
-    if (this.browser) return;
-    
-    try {
-      console.log('正在启动浏览器...');
-      const args = [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-software-rasterizer'
-      ];
-      
-      const chromiumPath = cfg?.bot?.chromium_path || null;
-      
-      this.browser = await puppeteer.launch({
-        headless: 'new',
-        args: args,
-        executablePath: chromiumPath || undefined,
-        ignoreDefaultArgs: ['--disable-extensions']
-      });
-      
-      console.log('浏览器启动成功');
-    } catch (error) {
-      console.error('浏览器启动失败:', error.message);
-      this.browser = null;
-    }
   }
 
   async getData() {
@@ -318,52 +286,119 @@ export class ZanzhuPlugin extends plugin {
     `;
   }
 
-  async generateScreenshot(htmlContent) {
-    if (!this.browser) {
-      console.log('浏览器未初始化，尝试重新启动...');
-      await this.initBrowser();
-      if (!this.browser) {
-        console.error('浏览器启动失败');
-        return null;
+  async initBrowser() {
+    if (this.browser) return this.browser;
+    
+    try {
+      console.log('正在启动浏览器...');
+      const chromiumPath = cfg?.bot?.chromium_path || null;
+      
+      const launchOptions = {
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-web-security',
+          '--disable-features=site-per-process'
+        ]
+      };
+      
+      if (chromiumPath) {
+        launchOptions.executablePath = chromiumPath;
       }
+      
+      this.browser = await puppeteer.launch(launchOptions);
+      console.log('浏览器启动成功');
+      return this.browser;
+    } catch (error) {
+      console.error('浏览器启动失败:', error.message);
+      this.browser = null;
+      return null;
+    }
+  }
+
+  async generateScreenshot(htmlContent) {
+    let browser = await this.initBrowser();
+    if (!browser) {
+      console.error('浏览器未启动成功');
+      return null;
     }
 
-    const page = await this.browser.newPage();
+    let page = null;
     try {
+      page = await browser.newPage();
+      
       console.log('正在生成截图...');
       
-      await page.setViewport({ 
-        width: 450, 
-        height: 700, 
-        deviceScaleFactor: 2 
+      // 设置视口大小
+      await page.setViewport({
+        width: 450,
+        height: 700,
+        deviceScaleFactor: 2
       });
       
-      await page.setContent(htmlContent, { 
-        waitUntil: ['networkidle0', 'domcontentloaded'] 
+      // 设置请求拦截，避免外部资源加载问题
+      await page.setRequestInterception(true);
+      page.on('request', (req) => {
+        // 允许必要的资源
+        if (['document', 'stylesheet', 'font', 'image'].includes(req.resourceType())) {
+          req.continue();
+        } else {
+          req.abort();
+        }
       });
+      
+      // 设置页面内容
+      await page.setContent(htmlContent, {
+        waitUntil: 'networkidle0',
+        timeout: 30000
+      });
+      
+      // 等待页面完全渲染
+      await page.waitForTimeout(1000);
       
       const screenshotPath = path.join(this.screenshotDir, `zanzhu_${Date.now()}.png`);
       console.log('截图保存路径:', screenshotPath);
       
-      await page.screenshot({ 
-        path: screenshotPath, 
-        fullPage: false,
-        quality: 90 
+      // 使用完整页面截图
+      await page.screenshot({
+        path: screenshotPath,
+        fullPage: true,
+        type: 'png',
+        quality: 100,
+        omitBackground: false
       });
       
       console.log('截图生成成功');
       return screenshotPath;
     } catch (err) {
       console.error('生成截图失败:', err.message);
+      console.error('错误详情:', err.stack);
       
       // 尝试保存HTML内容到文件，以便调试
-      const htmlPath = path.join(this.screenshotDir, `debug_${Date.now()}.html`);
-      fs.writeFileSync(htmlPath, htmlContent);
-      console.log('HTML已保存到:', htmlPath);
+      try {
+        const htmlPath = path.join(this.screenshotDir, `debug_${Date.now()}.html`);
+        fs.writeFileSync(htmlPath, htmlContent);
+        console.log('HTML已保存到:', htmlPath);
+      } catch (saveErr) {
+        console.error('保存HTML失败:', saveErr.message);
+      }
       
       return null;
     } finally {
-      await page.close().catch(() => {});
+      if (page) {
+        try {
+          await page.close();
+        } catch (e) {
+          console.error('关闭页面失败:', e.message);
+        }
+      }
     }
   }
 
@@ -383,14 +418,50 @@ export class ZanzhuPlugin extends plugin {
 
       if (!imagePath) {
         console.error('生成截图失败，检查日志获取详细信息');
-        return await e.reply('生成截图失败，请检查浏览器是否正常安装');
+        
+        // 尝试检查浏览器状态
+        if (!this.browser) {
+          console.log('浏览器未启动，尝试重新启动...');
+          this.browser = null;
+          await this.initBrowser();
+        }
+        
+        return await e.reply('生成截图失败，可能是浏览器配置问题，请检查日志或联系管理员');
       }
 
       console.log('准备发送图片:', imagePath);
       await e.reply([segment.image(`file:///${imagePath}`)]);
+      
+      // 清理旧截图文件
+      this.cleanOldScreenshots();
     } catch (err) {
       console.error('showZanzhu 执行失败:', err);
       await e.reply('发生错误，请稍后重试');
+    }
+  }
+
+  cleanOldScreenshots() {
+    try {
+      const files = fs.readdirSync(this.screenshotDir);
+      const screenshotFiles = files.filter(file => file.startsWith('zanzhu_') && file.endsWith('.png'));
+      
+      // 按时间排序，保留最新的5个文件
+      if (screenshotFiles.length > 5) {
+        const sortedFiles = screenshotFiles.sort((a, b) => {
+          const timeA = parseInt(a.replace('zanzhu_', '').replace('.png', ''));
+          const timeB = parseInt(b.replace('zanzhu_', '').replace('.png', ''));
+          return timeB - timeA;
+        });
+        
+        // 删除旧的截图文件
+        for (let i = 5; i < sortedFiles.length; i++) {
+          const oldFile = path.join(this.screenshotDir, sortedFiles[i]);
+          fs.unlinkSync(oldFile);
+          console.log('清理旧截图文件:', oldFile);
+        }
+      }
+    } catch (err) {
+      console.error('清理旧截图文件失败:', err.message);
     }
   }
 }
