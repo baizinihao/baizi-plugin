@@ -27,7 +27,7 @@ export default async function (path, params, cfg) {
     sys: {
       scale: 1,
       copyright: `<div style="text-align:center">白子:&nbsp;<span style="color:Pink;">API</span><span style="color:White;"> & API:<span style="color:Pink;">
-http://baizihaoxiao.xin<span style="color:White;"><br>Created By TRSS-Yunzai<span class="version">${Version.yunzai}</span> &nbsp jiuxian-plugin<span class="version">${Version.ver}</span>`
+http://baizihaoxiao.xin<span style="color:White;"><br>Created By TRSS-Yunzai<span class="version">${Version.yunzai}</span> &nbsp baizi-plugin<span class="version">${Version.ver}</span>`
     },
 	quality: 100
   }
