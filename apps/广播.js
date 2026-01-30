@@ -22,22 +22,22 @@ export class broadcastNotice extends plugin {
       priority: 5000,
       rule: [
         {
-          reg: '^#广播帮助$',
+          reg: '^(#)?广播帮助$',
           fnc: 'broadcastHelp',
           permission: 'master'
         },
         {
-          reg: '^#(白名单|黑名单)?广播通知$',
+          reg: '^(#)?(白名单|黑名单)?广播通知$',
           fnc: 'broadcast',
           permission: 'master'
         },
         {
-          reg: '^#广播(开启|关闭|设置|状态|日志)$',
+          reg: '^(#)?广播(开启|关闭|设置|状态|日志)$',
           fnc: 'configBroadcast',
           permission: 'master'
         },
         {
-          reg: '^#清理广播日志$',
+          reg: '^(#)?清理广播日志$',
           fnc: 'cleanupLogs',
           permission: 'master'
         }
@@ -53,40 +53,32 @@ export class broadcastNotice extends plugin {
   // 显示广播帮助
   async broadcastHelp(e) {
     const helpText = [
-      '广播通知插件帮助',
+      '广播通知插件指令说明',
       '',
       '主指令:',
-      '  #广播通知 - 向所有群发送广播',
-      '  #白名单广播通知 - 向白名单群组发送广播',
-      '  #黑名单广播通知 - 向黑名单群组发送广播',
+      '  广播通知 - 向所有群发送广播',
+      '  白名单广播通知 - 向白名单群组发送广播',
+      '  黑名单广播通知 - 向黑名单群组发送广播',
       '',
       '配置指令:',
-      '  #广播开启 - 启用广播功能',
-      '  #广播关闭 - 禁用广播功能',
-      '  #广播设置 - 设置广播参数',
-      '  #广播状态 - 查看广播状态',
-      '  #广播日志 - 查看最近广播记录',
-      '  #清理广播日志 - 清理过期日志',
-      '  #广播帮助 - 显示此帮助信息',
+      '  广播开启 - 启用广播功能',
+      '  广播关闭 - 禁用广播功能',
+      '  广播设置 - 设置广播参数',
+      '  广播状态 - 查看广播状态',
+      '  广播日志 - 查看最近广播记录',
+      '  清理广播日志 - 清理过期日志',
+      '  广播帮助 - 显示此帮助信息',
       '',
-      '参数设置格式:',
-      '  延迟 开/关 - 开启/关闭发送延迟',
-      '  延迟时间 毫秒数 - 设置延迟时间',
-      '  随机延迟 开/关 - 开启/关闭随机延迟',
-      '  日志保留 天数 - 设置日志保留天数',
+      '设置格式:',
+      '  延迟=开/关',
+      '  延迟时间=毫秒数',
+      '  随机延迟=开/关',
+      '  日志保留=天数',
       '',
-      '使用流程:',
-      '  1. 使用#广播设置配置参数',
-      '  2. 使用#广播状态确认配置',
-      '  3. 使用广播指令开始广播',
-      '  4. 按照提示发送广播内容',
-      '  5. 输入"确认"开始发送',
-      '',
-      '注意事项:',
-      '  - 广播内容不能为空',
-      '  - 操作需要机器人管理员权限',
-      '  - 建议在低峰时段进行广播',
-      '  - 广播过程中请勿中断机器人运行'
+      '示例:',
+      '  延迟=开',
+      '  延迟时间=3000',
+      '  随机延迟=关'
     ]
     
     await e.reply(helpText.join('\n'))
@@ -139,7 +131,11 @@ export class broadcastNotice extends plugin {
   // 广播配置管理
   async configBroadcast(e) {
     const config = await this.initConfig()
-    const action = e.msg.match(/^#广播(开启|关闭|设置|状态|日志)$/)[1]
+    const match = e.msg.match(/^(#)?广播(开启|关闭|设置|状态|日志)$/)
+    
+    if (!match) return true
+    
+    const action = match[2]
     
     switch (action) {
       case '开启':
@@ -395,15 +391,15 @@ export class broadcastNotice extends plugin {
     
     const config = await this.initConfig()
     if (!config.enable) {
-      await e.reply('广播通知功能已关闭，请使用 #广播开启 来启用')
+      await e.reply('广播通知功能已关闭，请使用"广播开启"来启用')
       return true
     }
     
-    const match = e.msg.match(/^#(白名单|黑名单)?广播通知$/)
+    const match = e.msg.match(/^(#)?(白名单|黑名单)?广播通知$/)
     if (!match) return true
     
-    const broadcastType = match[1] || '全部'
-    await e.reply(`请发送你要广播的内容（${broadcastType}）\n\n广播内容不能为空，输入"取消"可以退出广播模式`)
+    const broadcastType = match[2] || '全部'
+    await e.reply(`请发送你要广播的内容（${broadcastType}）\n广播内容不能为空，输入"取消"可以退出广播模式`)
     
     // 保存广播类型到上下文
     this.broadcastType = broadcastType
