@@ -298,16 +298,16 @@ export class ZanzhuPlugin extends plugin {
         headless: true,
         args: [
           '--no-sandbox',
-          '--disable-setuid-sandbox',
+          'disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-gpu',
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
           '--no-zygote',
           '--single-process',
-          '--disable-web-security'
-        ],
-        timeout: 30000
+          '--disable-web-security',
+          '--disable-features=site-per-process'
+        ]
       };
       
       // 如果有配置浏览器路径就使用
@@ -339,28 +339,24 @@ export class ZanzhuPlugin extends plugin {
       
       console.log('正在生成截图...');
       
-      // 设置更小的视口
+      // 设置视口
       await page.setViewport({
         width: 450,
         height: 700,
         deviceScaleFactor: 1
       });
       
-      // 禁用图片加载以加快速度
-      await page.setRequestInterception(true);
-      page.on('request', (req) => {
-        if (['image', 'stylesheet', 'font'].includes(req.resourceType())) {
-          req.abort();
-        } else {
-          req.continue();
-        }
-      });
+      // 禁用网络请求拦截，让所有请求都通过
+      // 只在超时问题严重时才考虑拦截
       
-      // 增加超时时间，使用更简单的等待条件
+      // 设置页面内容，增加超时时间到60秒
+      console.log('开始加载HTML内容...');
       await page.setContent(htmlContent, {
-        waitUntil: 'domcontentloaded',
+        waitUntil: 'domcontentloaded', // 只等待DOM加载完成，不等待网络资源
         timeout: 60000
       });
+      
+      console.log('HTML内容加载完成');
       
       // 等待页面渲染完成
       await page.waitForTimeout(2000);
@@ -368,25 +364,32 @@ export class ZanzhuPlugin extends plugin {
       const screenshotPath = path.join(this.screenshotDir, `zanzhu_${Date.now()}.png`);
       console.log('截图保存路径:', screenshotPath);
       
+      // 计算页面高度
+      const height = await page.evaluate(() => {
+        return Math.max(
+          document.body.scrollHeight,
+          document.body.offsetHeight,
+          document.documentElement.clientHeight,
+          document.documentElement.scrollHeight,
+          document.documentElement.offsetHeight
+        );
+      });
+      
+      console.log('页面高度:', height);
+      
+      // 重新设置视口高度为页面高度
+      await page.setViewport({
+        width: 450,
+        height: Math.min(height, 3000), // 限制最大高度
+        deviceScaleFactor: 1
+      });
+      
       // 截图选项
       const screenshotOptions = {
         path: screenshotPath,
-        fullPage: false,
+        fullPage: true,
         type: 'png',
         quality: 90
-      };
-      
-      // 计算需要的高度
-      const height = await page.evaluate(() => {
-        return document.documentElement.scrollHeight;
-      });
-      
-      screenshotOptions.fullPage = true;
-      screenshotOptions.clip = {
-        x: 0,
-        y: 0,
-        width: 450,
-        height: Math.min(height, 2000) // 限制最大高度
       };
       
       await page.screenshot(screenshotOptions);
@@ -434,19 +437,7 @@ export class ZanzhuPlugin extends plugin {
 
       if (!imagePath) {
         console.error('生成截图失败，检查日志获取详细信息');
-        
-        // 尝试备用方案：使用文本格式返回
-        let message = '🐾 白子 の投喂榜 🐾\n\n';
-        data.forEach((item, index) => {
-          message += `${index + 1}. QQ: ${this.hideQQNumber(item.qqnumber)} - ¥${item.money.toFixed(2)}\n`;
-        });
-        
-        const totalAmount = data.reduce((sum, item) => sum + item.money, 0);
-        message += `\n✿ 总投喂金额: ¥${totalAmount.toFixed(2)}\n`;
-        message += `✿ 总投喂人数: ${data.length}\n\n`;
-        message += '© liusu 2024-2026';
-        
-        return await e.reply(message);
+        return await e.reply('生成截图失败，可能是浏览器配置问题，请检查日志或联系管理员');
       }
 
       console.log('准备发送图片:', imagePath);
