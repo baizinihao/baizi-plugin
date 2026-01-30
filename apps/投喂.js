@@ -6,7 +6,7 @@ import cfg from '../../../lib/config/config.js';
 import axios from 'axios';
 
 const zanzhuPath = path.join(process.cwd(), 'plugins', 'baizi-plugin', 'config', 'zanzhu.json');
-const fontPath = '/root/Yunzai/resources/fonts/NotoSansSC-Regular.ttf';
+const fontPath = path.join(process.cwd(), 'plugins', 'baizi-plugin', 'resources', 'common', 'font', 'tttgbnumber.ttf');
 
 export class ZanzhuPlugin extends plugin {
   constructor() {
@@ -21,7 +21,7 @@ export class ZanzhuPlugin extends plugin {
           fnc: 'addZanzhu'
         },
         {
-          reg: '^#?赞助修改\\s*(\\d+):(\\d+(\\.\\d+)?)$',
+          reg: '^#?赞助修改\\s*(\\d+):(\\d+(\\.\d+)?)$',
           fnc: 'updateZanzhu'
         },
         {
@@ -40,16 +40,52 @@ export class ZanzhuPlugin extends plugin {
     if (!fs.existsSync(this.screenshotDir)) {
       fs.mkdirSync(this.screenshotDir, { recursive: true });
     }
+    
+    // 初始化浏览器
+    this.initBrowser();
+  }
+
+  async initBrowser() {
+    if (this.browser) return;
+    
+    try {
+      console.log('正在启动浏览器...');
+      const args = [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-software-rasterizer'
+      ];
+      
+      const chromiumPath = cfg?.bot?.chromium_path || null;
+      
+      this.browser = await puppeteer.launch({
+        headless: 'new',
+        args: args,
+        executablePath: chromiumPath || undefined,
+        ignoreDefaultArgs: ['--disable-extensions']
+      });
+      
+      console.log('浏览器启动成功');
+    } catch (error) {
+      console.error('浏览器启动失败:', error.message);
+      this.browser = null;
+    }
   }
 
   async getData() {
     try {
+      if (!fs.existsSync(zanzhuPath)) {
+        return [];
+      }
       const data = JSON.parse(fs.readFileSync(zanzhuPath, 'utf8'));
       return data.map(item => ({
         qqnumber: String(item.qqnumber),
         money: item.money
       })).sort((a, b) => b.money - a.money);
     } catch (e) {
+      console.error('读取数据失败:', e.message);
       return [];
     }
   }
@@ -61,7 +97,9 @@ export class ZanzhuPlugin extends plugin {
         fs.mkdirSync(dirPath, { recursive: true });
       }
       fs.writeFileSync(zanzhuPath, JSON.stringify(data, null, 2));
-    } catch (e) {}
+    } catch (e) {
+      console.error('保存数据失败:', e.message);
+    }
   }
 
   async checkPermission(e) {
@@ -170,6 +208,7 @@ export class ZanzhuPlugin extends plugin {
       }
       return '匿名';
     } catch (e) {
+      console.error('获取QQ昵称失败:', e.message);
       return '匿名';
     }
   }
@@ -220,11 +259,11 @@ export class ZanzhuPlugin extends plugin {
         <title>赞助榜</title>
         <style>
           @font-face {
-            font-family: 'Noto Sans SC';
+            font-family: 'ZanzhuFont';
             src: url('file://${fontPath}') format('truetype');
           }
           body { 
-            font-family: 'Noto Sans SC', sans-serif; 
+            font-family: 'ZanzhuFont', 'PingFang SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', 'Segoe UI', 'Helvetica Neue', 'Arial', 'Noto Sans SC', sans-serif; 
             background: #f8f9fa; 
             color: #2B2C34; 
             margin: 0; 
@@ -271,45 +310,61 @@ export class ZanzhuPlugin extends plugin {
         </style>
       </head>
       <body>
-        <h1>🐾 jiuxian の投喂榜 🐾</h1>
+        <h1>🐾 白子 の投喂榜 🐾</h1>
         <div class="sponsor-list">${totalCard}${items.join('')}</div>
-        <h2>© liusu 2024-2025</h2>
+        <h2>© liusu 2024-2026</h2>
       </body>
       </html>
     `;
   }
 
   async generateScreenshot(htmlContent) {
-    const browser = await this.initBrowserIfNeeded();
-    if (!browser) return null;
-
-    const page = await browser.newPage();
-    try {
-      await page.setViewport({ width: 550, height: 800, deviceScaleFactor: 2 });
-      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-      const screenshotPath = path.join(this.screenshotDir, `zanzhu_${Date.now()}.png`);
-      await page.screenshot({ path: screenshotPath, fullPage: true });
-      return screenshotPath;
-    } catch (err) {
-      return null;
-    } finally {
-      await page.close();
-    }
-  }
-
-  async initBrowserIfNeeded() {
     if (!this.browser) {
-      try {
-        this.browser = await puppeteer.launch({
-          headless: true,
-          args: ['--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage', '--disable-setuid-sandbox', '--no-zygote', '--disable-web-security', '--allow-file-access-from-files'],
-          executablePath: cfg?.bot?.chromium_path || undefined
-        });
-      } catch (err) {
+      console.log('浏览器未初始化，尝试重新启动...');
+      await this.initBrowser();
+      if (!this.browser) {
+        console.error('浏览器启动失败');
         return null;
       }
     }
-    return this.browser;
+
+    const page = await this.browser.newPage();
+    try {
+      console.log('正在生成截图...');
+      
+      await page.setViewport({ 
+        width: 450, 
+        height: 700, 
+        deviceScaleFactor: 2 
+      });
+      
+      await page.setContent(htmlContent, { 
+        waitUntil: ['networkidle0', 'domcontentloaded'] 
+      });
+      
+      const screenshotPath = path.join(this.screenshotDir, `zanzhu_${Date.now()}.png`);
+      console.log('截图保存路径:', screenshotPath);
+      
+      await page.screenshot({ 
+        path: screenshotPath, 
+        fullPage: false,
+        quality: 90 
+      });
+      
+      console.log('截图生成成功');
+      return screenshotPath;
+    } catch (err) {
+      console.error('生成截图失败:', err.message);
+      
+      // 尝试保存HTML内容到文件，以便调试
+      const htmlPath = path.join(this.screenshotDir, `debug_${Date.now()}.html`);
+      fs.writeFileSync(htmlPath, htmlContent);
+      console.log('HTML已保存到:', htmlPath);
+      
+      return null;
+    } finally {
+      await page.close().catch(() => {});
+    }
   }
 
   async showZanzhu(e) {
@@ -320,15 +375,21 @@ export class ZanzhuPlugin extends plugin {
       }
 
       await e.reply(`正在整理各位大大的投喂...\n请等一下噢 ⸜(๑'ᵕ'๑)⸝⋆*`);
+      
       const htmlContent = await this.generateHTML(data);
+      console.log('HTML内容生成完成');
+      
       const imagePath = await this.generateScreenshot(htmlContent);
 
       if (!imagePath) {
-        return await e.reply('生成截图失败，请稍后重试');
+        console.error('生成截图失败，检查日志获取详细信息');
+        return await e.reply('生成截图失败，请检查浏览器是否正常安装');
       }
 
+      console.log('准备发送图片:', imagePath);
       await e.reply([segment.image(`file:///${imagePath}`)]);
     } catch (err) {
+      console.error('showZanzhu 执行失败:', err);
       await e.reply('发生错误，请稍后重试');
     }
   }
