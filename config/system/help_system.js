@@ -19,11 +19,6 @@ export const helpList = [
   {
     "group": "基本功能",
     "list": [
-          {
-        "icon": 1,
-        "title": "网易功能",
-        "desc": "查看网易功能列表"
-      },
       {
         "icon": 2,
         "title": "#随机emo文案",
