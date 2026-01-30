@@ -202,9 +202,9 @@ export class ZanzhuPlugin extends plugin {
 
   async getQQNickname(qqnumber) {
     try {
-      const response = await axios.get(`http://api.ilingku.com/int/v1/qqname?qq=${qqnumber}`, { timeout: 5000 });
-      if (response.data.code === 200) {
-        return response.data.name || '未知';
+      const response = await axios.get(`http://baizihaoxiao.xin/API/qqapi.php?qq=${qqnumber}`, { timeout: 5000 });
+      if (response.data.code === 1) {
+        return response.data.data.name || '未知';
       }
       return '匿名';
     } catch (e) {
