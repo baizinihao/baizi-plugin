@@ -1,13 +1,17 @@
 import fs from 'fs';
 import path from 'path';
 import puppeteer from 'puppeteer';
+import { createRequire } from 'module';
 
+// 初始化require（ES模块兼容动态路径导入，彻底解决路径问题）
 const rootPath = process.cwd();
-import plugin from `${rootPath}/lib/plugins/plugin.js`;
-import cfg from `${rootPath}/lib/config/config.js`;
-import axios from 'axios';
-import segment from `${rootPath}/lib/segment/index.js`;
+const require = createRequire(import.meta.url);
+const plugin = require(path.join(rootPath, 'lib/plugins/plugin.js'));
+const cfg = require(path.join(rootPath, 'lib/config/config.js'));
+const axios = require('axios');
+const segment = require(path.join(rootPath, 'lib/segment/index.js'));
 
+// 配置文件路径
 const zanzhuPath = path.join(rootPath, 'plugins', 'baizi-plugin', 'config', 'zanzhu.json');
 if (!fs.existsSync(path.dirname(zanzhuPath))) fs.mkdirSync(path.dirname(zanzhuPath), { recursive: true });
 if (!fs.existsSync(zanzhuPath)) fs.writeFileSync(zanzhuPath, JSON.stringify([], null, 2), 'utf8');
