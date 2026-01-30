@@ -19,11 +19,7 @@
   "author": "baizi",
   "license": "MIT",
   "dependencies": {
-    "qrcode": "^1.5.4",
-    "axios": "^1.7.7",
-    "crypto": "^1.0.1",
-    "ulid": "^3.0.0",
-    "sqlite": "^4.2.1",
-    "sqlite3": "^5.1.6"
+    "axios": "^1.7.7"
   }
+
 }
