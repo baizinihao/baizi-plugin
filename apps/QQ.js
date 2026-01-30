@@ -4,12 +4,10 @@ export class QQHead extends plugin {
   constructor() {
     super({
       name: "QQ头像获取",
-      dsc: "通过QQ号查询",
+      dsc: "通过QQ号查询头像",
       event: "message",
       priority: 5000,
-      rule: [
-        { reg: "^#?(QQ|qq)头像\\s*(\\d+)$", fnc: "getQQHead" }
-      ]
+      rule: [{ reg: "^#?(QQ|qq)头像\\s*(\\d+)$", fnc: "getQQHead" }]
     });
   }
 
@@ -21,27 +19,22 @@ export class QQHead extends plugin {
         signal: controller.signal,
         method: "GET"
       });
-      if (!res.ok) throw new Error();
-      return await res.json();
+      return res.ok ? await res.json() : { code: 0 };
     } catch (e) {
-      return { code: 0, msg: "头像查询失败，请稍后重试" };
+      return { code: 0 };
     }
   }
 
   async getQQHead(e) {
     const matchRes = e.msg.match(/^#?(QQ|qq)头像\s*(\d+)$/);
     if (!matchRes || !matchRes[2]) {
-      return await e.reply("请输入正确格式，示例：\nqq头像10001\nQQ头像 123456", true);
+      return await e.reply("请输入正确格式：qq头像10001 或 QQ头像 123456", true);
     }
     const qq = matchRes[2];
     const data = await this.requestApi(qq);
-    if (data.code !== 1 || !data.data || !data.data.startsWith('http')) {
-      return await e.reply(data.msg || "查询失败，头像链接无效", true);
+    if (!data.data || typeof data.data !== 'string' || !data.data.startsWith('http')) {
+      return await e.reply(data.msg || "头像链接无效", true);
     }
-    try {
-      await e.reply([segment.image(data.data, { type: 'png' })], true);
-    } catch (err) {
-      await e.reply("头像发送失败，请稍后重试", true);
-    }
+    await e.reply(segment.image(data.data), true);
   }
 }
