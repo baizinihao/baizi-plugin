@@ -17,10 +17,11 @@ export default class 光遇叫声 extends plugin {
     const pre = e.msg.startsWith('#') ? '#' : '';
     try {
       const res = await fetch('http://baizihaoxiao.xin/API/sky3.php');
-      const data = await res.text();
-      await e.reply(pre + (data || '光遇叫声～'));
+      const buffer = await res.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString('base64');
+      await e.reply(`${pre}[CQ:voice,base64=${base64}]`);
     } catch {
-      await e.reply(pre + '光遇叫声接口调用失败～');
+      await e.reply(`${pre}光遇叫声获取失败，请稍后再试～`);
     }
   }
 }
