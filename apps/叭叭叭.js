@@ -1,16 +1,16 @@
-import plugin from '@/lib/plugins/plugin.js';
+import plugin from '../../../../lib/plugins/plugin.js';
 import axios from 'axios';
 
 export default class 光遇随机叫声 extends plugin {
   constructor() {
     super({
       name: '随机光遇叫声',
-      dsc: '调用指定接口返回随机光遇叫声，支持加/不加井号',
+      dsc: '调用指定接口返回随机光遇叫声',
       event: 'message',
       priority: 5000,
       rule: [
         {
-          reg: /^#?随机光遇叫声$/,
+          reg: /^#?(随机)?光遇叫声$/,
           fnc: 'getSkySound'
         }
       ]
