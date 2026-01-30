@@ -1,12 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 import puppeteer from 'puppeteer';
-import plugin from '../../../lib/plugins/plugin.js';
-import cfg from '../../../lib/config/config.js';
-import axios from 'axios';
-import segment from '../../../lib/segment.js';
 
-const zanzhuPath = path.join(process.cwd(), 'plugins', 'baizi-plugin', 'config', 'zanzhu.json');
+const rootPath = process.cwd();
+import plugin from `${rootPath}/lib/plugins/plugin.js`;
+import cfg from `${rootPath}/lib/config/config.js`;
+import axios from 'axios';
+import segment from `${rootPath}/lib/segment/index.js`;
+
+const zanzhuPath = path.join(rootPath, 'plugins', 'baizi-plugin', 'config', 'zanzhu.json');
 if (!fs.existsSync(path.dirname(zanzhuPath))) fs.mkdirSync(path.dirname(zanzhuPath), { recursive: true });
 if (!fs.existsSync(zanzhuPath)) fs.writeFileSync(zanzhuPath, JSON.stringify([], null, 2), 'utf8');
 
@@ -23,7 +25,7 @@ export class ZanzhuPlugin extends plugin {
       ]
     });
     this.browser = null;
-    this.screenshotDir = path.join(process.cwd(), 'data', 'temp');
+    this.screenshotDir = path.join(rootPath, 'data', 'temp');
     if (!fs.existsSync(this.screenshotDir)) fs.mkdirSync(this.screenshotDir, { recursive: true });
   }
 
