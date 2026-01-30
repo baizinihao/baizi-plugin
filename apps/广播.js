@@ -46,6 +46,20 @@ export class example2 extends plugin {
     const msg = e.msg.match(/^#(白名单|黑名单)?广播通知$/);
     console.log(e.msg);
     const otherYamlPath = path.join(process.cwd(), 'config', 'other.yaml');
+    // 检查other.yaml是否存在
+    if (!fs.existsSync(otherYamlPath)) {
+      if (msg[1]) {
+        await e.reply(`未找到配置文件：${otherYamlPath}\n无法使用${msg[1]}广播，请先创建配置文件并配置白/黑名单`);
+        return true;
+      }
+      // 无配置文件则直接执行全群广播
+      const all_group = Array.from(Bot[e.self_id].gl.values());
+      const targetGroups = all_group.map(item => item.group_id);
+      await 发送消息(targetGroups, e.message, e);
+      await e.reply(`广播已完成（未找到白/黑名单配置文件，执行全群广播）`);
+      return true;
+    }
+    // 配置文件存在则正常读取
     const otheryaml = await fsPromises.readFile(otherYamlPath, 'utf-8');
     const other = yaml.parse(otheryaml);
     let targetGroups = [];
