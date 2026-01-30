@@ -117,7 +117,7 @@ export class ZanzhuPlugin extends plugin {
   async updateZanzhu(e) {
     if (!(await this.checkPermission(e))) return;
 
-    const match = e.msg.match(/^#?赞助修改\s*(\d+):(\d+(\.\d+)?)$/);
+    const match = e.msg.match(/^#?赞助修改\s*(\d+):(\\d+(\\.\\d+)?)$/);
     if (!match) {
       await e.reply('指令格式错误，请使用：#赞助修改 QQ号:新金额');
       return;
@@ -145,7 +145,7 @@ export class ZanzhuPlugin extends plugin {
   async deleteZanzhu(e) {
     if (!(await this.checkPermission(e))) return;
 
-    const match = e.msg.match(/^#?赞助删除\s*(\d+)$/);
+    const match = e.msg.match(/^#?赞助删除\s*(\\d+)$/);
     if (!match) {
       await e.reply('指令格式错误，请使用：#赞助删除 QQ号');
       return;
@@ -213,8 +213,8 @@ export class ZanzhuPlugin extends plugin {
     return `¥${money.toFixed(2)}`;
   }
 
-  getRankEmoji(index) {
-    if (index === 0) return '🥇';
+  getRankIcon(index) {
+    if (index === 0) return '👑';
     if (index === 1) return '🥈';
     if (index === 2) return '🥉';
     return `${index + 1}`;
@@ -227,12 +227,7 @@ export class ZanzhuPlugin extends plugin {
       
       const file = fs.createWriteStream(filePath);
       
-      // 处理HTTP和HTTPS
-      const request = url.startsWith('https') ? 
-        https.get(url, (response) => handleResponse(response)) :
-        http.get(url, (response) => handleResponse(response));
-      
-      const handleResponse = (response) => {
+      const request = https.get(url, (response) => {
         if (response.statusCode !== 200) {
           file.close();
           fs.unlinkSync(filePath);
@@ -245,9 +240,7 @@ export class ZanzhuPlugin extends plugin {
           file.close();
           resolve(filePath);
         });
-      };
-      
-      request.on('error', (err) => {
+      }).on('error', (err) => {
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }
@@ -297,72 +290,74 @@ export class ZanzhuPlugin extends plugin {
         sponsors.push({
           ...item,
           qqInfo,
-          rank: this.getRankEmoji(i),
+          rankIcon: this.getRankIcon(i),
           moneyStr: this.formatMoney(item.money),
           hiddenQQ: this.hideQQNumber(item.qqnumber)
         });
       }
 
-      // 构建消息数组 - 使用Yunzai的segment来正确发送图片
-      const messageSegments = [];
+      // 构建消息内容
+      let message = '';
       
-      // 添加标题
-      messageSegments.push('┏━━━━━━━━━━━━━━━━━━━━━━━━┓\n');
-      messageSegments.push('┃      🐾 白子の投喂榜 🐾      ┃\n');
-      messageSegments.push('┗━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n');
-
-      // 处理前10名赞助者
-      const displayLimit = Math.min(sponsors.length, 10);
+      // 标题部分
+      message += '💰 白子の投喂榜 💰\n\n';
       
-      for (let i = 0; i < displayLimit; i++) {
-        const sponsor = sponsors[i];
+      // 前三名显示头像和详细信息
+      const topThree = sponsors.slice(0, 3);
+      
+      for (let i = 0; i < topThree.length; i++) {
+        const sponsor = topThree[i];
         
         try {
           // 下载头像
           const avatarPath = await this.downloadImage(sponsor.qqInfo.avatar);
           
-          // 构建消息段 - 使用Yunzai的segment
-          const avatarSegment = segment.image(`file:///${avatarPath}`);
+          // 添加头像和用户信息
+          message += segment.image(`file:///${avatarPath}`) + '\n';
+          message += `${sponsor.rankIcon} ${sponsor.qqInfo.nickname}\n`;
+          message += `📧 ID: ${sponsor.hiddenQQ}\n`;
+          message += `💰 ${sponsor.moneyStr}\n`;
           
-          // 添加头像
-          messageSegments.push(avatarSegment);
-          
-          // 添加用户信息
-          let rankIcon = '';
-          if (i === 0) rankIcon = '👑 ';
-          else if (i === 1) rankIcon = '💎 ';
-          else if (i === 2) rankIcon = '✨ ';
-          
-          messageSegments.push(`\n${rankIcon}${sponsor.rank} ${sponsor.qqInfo.nickname}\n`);
-          messageSegments.push(`ID: ${sponsor.hiddenQQ}\n`);
-          messageSegments.push(`金额: ${sponsor.moneyStr}\n`);
-          
-          // 如果不是最后一个，添加分隔线
-          if (i < displayLimit - 1) {
-            messageSegments.push('─'.repeat(24) + '\n');
+          // 添加分隔线（除了最后一个）
+          if (i < topThree.length - 1 || sponsors.length > 3) {
+            message += '══════════════════\n';
           }
         } catch (error) {
-          console.error(`处理赞助者 ${sponsor.qqnumber} 失败:`, error);
-          // 如果头像下载失败，只发送文字信息
-          messageSegments.push(`${sponsor.rank} ${sponsor.qqInfo.nickname} - ${sponsor.moneyStr}\n`);
-          if (i < displayLimit - 1) {
-            messageSegments.push('─'.repeat(24) + '\n');
+          console.error(`下载头像失败 (${sponsor.qqnumber}):`, error.message);
+          // 如果下载失败，只显示文字信息
+          message += `${sponsor.rankIcon} ${sponsor.qqInfo.nickname}\n`;
+          message += `📧 ID: ${sponsor.hiddenQQ}\n`;
+          message += `💰 ${sponsor.moneyStr}\n`;
+          
+          if (i < topThree.length - 1 || sponsors.length > 3) {
+            message += '══════════════════\n';
           }
         }
       }
-
-      // 如果有更多赞助者，以文字形式显示
-      if (sponsors.length > displayLimit) {
-        messageSegments.push('\n💫 其他赞助者 💫\n');
-        for (let i = displayLimit; i < Math.min(sponsors.length, displayLimit + 10); i++) {
-          const sponsor = sponsors[i];
-          messageSegments.push(`${sponsor.rank} ${sponsor.qqInfo.nickname} - ${sponsor.moneyStr}\n`);
+      
+      // 第四名及之后显示文字列表
+      if (sponsors.length > 3) {
+        message += '\n🏆 其他投喂者:\n';
+        
+        // 限制显示数量，避免消息过长
+        const maxDisplay = Math.min(sponsors.length, 20); // 最多显示20名
+        const others = sponsors.slice(3, maxDisplay);
+        
+        for (let i = 0; i < others.length; i++) {
+          const sponsor = others[i];
+          const rankNumber = i + 4; // 从第4名开始
+          message += `${rankNumber}. ${sponsor.qqInfo.nickname} - ${sponsor.moneyStr}\n`;
         }
-        if (sponsors.length > displayLimit + 10) {
-          messageSegments.push(`...等 ${sponsors.length - displayLimit - 10} 位赞助者\n`);
+        
+        // 如果还有更多赞助者，显示省略号
+        if (sponsors.length > maxDisplay) {
+          const remaining = sponsors.length - maxDisplay;
+          message += `...等 ${remaining} 位投喂者\n`;
         }
+        
+        message += '\n';
       }
-
+      
       // 计算统计信息
       const totalAmount = sponsors.reduce((sum, item) => sum + item.money, 0);
       const totalSponsors = sponsors.length;
@@ -370,18 +365,18 @@ export class ZanzhuPlugin extends plugin {
       const maxAmount = sponsors.length > 0 ? Math.max(...sponsors.map(item => item.money)) : 0;
 
       // 添加统计信息
-      messageSegments.push('\n📊 投喂统计 📊\n');
-      messageSegments.push('═'.repeat(24) + '\n');
-      messageSegments.push(`✨ 累计金额: ${this.formatMoney(totalAmount)}\n`);
-      messageSegments.push(`👥 投喂人数: ${totalSponsors}人\n`);
-      messageSegments.push(`📈 人均投喂: ${this.formatMoney(avgAmount)}\n`);
-      messageSegments.push(`🏆 最高投喂: ${this.formatMoney(maxAmount)}\n`);
-      messageSegments.push('═'.repeat(24) + '\n');
-      messageSegments.push('💕 感谢各位大大的支持！ 💕\n');
-      messageSegments.push('© liusu 2024-2026');
+      message += '📊 统计信息:\n';
+      message += '────────────────────\n';
+      message += `✨ 累计金额: ${this.formatMoney(totalAmount)}\n`;
+      message += `👥 投喂人数: ${totalSponsors}人\n`;
+      message += `📈 人均投喂: ${this.formatMoney(avgAmount)}\n`;
+      message += `🏅 最高投喂: ${this.formatMoney(maxAmount)}\n`;
+      message += '────────────────────\n';
+      message += '💰 感谢各位大大的支持！\n';
+      message += '© liusu 2024-2026';
 
-      // 发送消息 - 直接传递消息段数组
-      await e.reply(messageSegments);
+      // 发送消息
+      await e.reply(message);
 
       // 清理临时文件
       this.cleanOldAvatarFiles();
