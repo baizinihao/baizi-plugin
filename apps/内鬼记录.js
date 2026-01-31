@@ -10,21 +10,21 @@ export class GroupMemberManager extends plugin {
       name: '内鬼管理',
       dsc: '管理内鬼列表和信任列表',
       event: 'message',
-      priority: 50,
+      priority: 1,
       rule: [
-        { reg: '^#?(内鬼列表)$', fnc: 'getSuspectList' },
-        { reg: '^#?(信任列表)$', fnc: 'getTrustedList' },
-        { reg: '^#?(重置列表)$', fnc: 'resetList' },
-        { reg: '^#?(他不是内鬼)$', fnc: 'markAsNotSuspect' },
-        { reg: '^#?(跑路列表)$', fnc: 'getEscapedList' },
-        { reg: '^#?(内鬼帮助)$', fnc: 'showHelp' }
+        { reg: '^#?内鬼列表$', fnc: 'getSuspectList' },
+        { reg: '^#?信任列表$', fnc: 'getTrustedList' },
+        { reg: '^#?重置列表$', fnc: 'resetList' },
+        { reg: '^#?他不是内鬼$', fnc: 'markAsNotSuspect' },
+        { reg: '^#?跑路列表$', fnc: 'getEscapedList' },
+        { reg: '^#?内鬼帮助$', fnc: 'showHelp' }
       ]
     });
     
+    // 配置文件路径：插件目录/config/uid.yaml（使用已存在的config目录）
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    this.configDir = path.join(__dirname, 'config');
-    this.uidFile = path.join(this.configDir, 'uid.yaml');
+    this.uidFile = path.join(__dirname, 'config', 'uid.yaml'); // 直接指向已有的config目录
     this.initializeUidFile();
   }
 
@@ -41,9 +41,11 @@ export class GroupMemberManager extends plugin {
     return out;
   }
 
+  // 仅创建配置文件（不创建config目录，默认目录已存在）
   initializeUidFile() {
-    if (!fs.existsSync(this.configDir)) fs.mkdirSync(this.configDir, { recursive: true });
-    if (!fs.existsSync(this.uidFile)) fs.writeFileSync(this.uidFile, '{}', 'utf8');
+    if (!fs.existsSync(this.uidFile)) {
+      fs.writeFileSync(this.uidFile, '{}', 'utf8');
+    }
   }
 
   readUidData() {
@@ -163,7 +165,7 @@ export class GroupMemberManager extends plugin {
         }
       } else msgList.push({ message: '【已跑路成员】\n暂无', nickname: '内鬼管理系统', user_id: e.bot.uin });
 
-      msgList.push({ message: '可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助', nickname: '内鬼管理系统', user_id: e.bot.uin });
+      msgList.push({ message: '可用指令：#他不是内鬼 @用户、#信任列表、#重置列表、#跑路列表、#内鬼帮助', nickname: '内鬼管理系统', user_id: e.bot.uin });
       const forwardMsg = await e.group.makeForwardMsg(msgList);
       await e.reply(forwardMsg);
       return true;
@@ -194,7 +196,7 @@ export class GroupMemberManager extends plugin {
         msgList.push({ message: `【信任成员列表 ${i + 1}/${pages}】\n${pageMembers.join('\n')}`, nickname: '内鬼管理系统', user_id: e.bot.uin });
       }
 
-      msgList.push({ message: '可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助', nickname: '内鬼管理系统', user_id: e.bot.uin });
+      msgList.push({ message: '可用指令：#他不是内鬼 @用户、#信任列表、#重置列表、#跑路列表、#内鬼帮助', nickname: '内鬼管理系统', user_id: e.bot.uin });
       const forwardMsg = await e.group.makeForwardMsg(msgList);
       await e.reply(forwardMsg);
       return true;
@@ -224,7 +226,7 @@ export class GroupMemberManager extends plugin {
         msgList.push({ message: pageMembers.length ? `【已跑路成员 ${i + 1}/${pages}】\n${pageMembers.join('\n')}` : `【已跑路成员 1/1】\n暂无`, nickname: '内鬼管理系统', user_id: e.bot.uin });
       }
 
-      msgList.push({ message: '可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助', nickname: '内鬼管理系统', user_id: e.bot.uin });
+      msgList.push({ message: '可用指令：#他不是内鬼 @用户、#信任列表、#重置列表、#跑路列表、#内鬼帮助', nickname: '内鬼管理系统', user_id: e.bot.uin });
       const forwardMsg = await e.group.makeForwardMsg(msgList);
       await e.reply(forwardMsg);
       return true;
@@ -248,7 +250,7 @@ export class GroupMemberManager extends plugin {
         uidData[groupId].excluded = this.normalizeIdArray(uidData[groupId].excluded);
         const previousCount = (uidData[groupId].excluded || []).length;
         uidData[groupId].excluded = [];
-        if (this.saveUidData(uidData)) await e.reply(`✅ 已重置信任列表，移除了 ${previousCount} 个信任成员\n可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助`);
+        if (this.saveUidData(uidData)) await e.reply(`✅ 已重置信任列表，移除了 ${previousCount} 个信任成员\n可用指令：#他不是内鬼 @用户、#信任列表、#重置列表、#跑路列表、#内鬼帮助`);
         else await e.reply('❌ 重置失败，请重试');
       } else await e.reply('⚠️ 本群还没有任何信任记录');
       return true;
@@ -282,7 +284,7 @@ export class GroupMemberManager extends plugin {
       if (!uidData[groupId].excluded.includes(targetNum)) {
         uidData[groupId].excluded.push(targetNum);
         uidData[groupId].excluded = this.normalizeIdArray(uidData[groupId].excluded);
-        if (this.saveUidData(uidData)) await e.reply(`✅ 已标记用户 ${targetNum} 为可信任成员\n可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助`);
+        if (this.saveUidData(uidData)) await e.reply(`✅ 已标记用户 ${targetNum} 为可信任成员\n可用指令：#他不是内鬼 @用户、#信任列表、#重置列表、#跑路列表、#内鬼帮助`);
         else await e.reply('❌ 保存数据失败，请重试');
       } else await e.reply(`⚠️ 用户 ${targetNum} 已在信任列表中`);
       return true;
@@ -293,16 +295,14 @@ export class GroupMemberManager extends plugin {
     }
   }
 
-  // 极简版帮助：仅返回插件所有指令，无任何多余逻辑
   async showHelp(e) {
-    await e.reply(`内鬼管理插件指令：
-1. 内鬼列表
-2. 信任列表
-3. 跑路列表
-4. 他不是内鬼 @用户
-5. 重置列表
-6. 内鬼帮助
- nihao`, true);
+    const helpMsg = `内鬼管理插件可用指令：
+1. #他不是内鬼 @用户
+2. #信任列表
+3. #重置列表
+4. #跑路列表
+（指令支持带#或不带#）`;
+    await e.reply(helpMsg, true);
     return true;
   }
 }
