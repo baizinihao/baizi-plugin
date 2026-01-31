@@ -21,8 +21,8 @@ export const helpList = [
     "list": [
       {
         "icon": 0,
-        "title": "#内鬼帮助",
-        "desc": "#内鬼"
+        "title": "#重名查询",
+        "desc": "#重复名字查询"
       },
       {
         "icon": 0,
