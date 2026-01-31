@@ -12,12 +12,12 @@ export class GroupMemberManager extends plugin {
       event: 'message',
       priority: 50,
       rule: [
-        { reg: '^#?内鬼列表$', fnc: 'getSuspectList' },
-        { reg: '^#?信任列表$', fnc: 'getTrustedList' },
-        { reg: '^#?重置列表$', fnc: 'resetList' },
-        { reg: '^#?他不是内鬼$', fnc: 'markAsNotSuspect' },
-        { reg: '^#?跑路列表$', fnc: 'getEscapedList' },
-        { reg: '^#?内鬼帮助$', fnc: 'showHelp' }
+        { reg: '^#?(内鬼列表)$', fnc: 'getSuspectList' },
+        { reg: '^#?(信任列表)$', fnc: 'getTrustedList' },
+        { reg: '^#?(重置列表)$', fnc: 'resetList' },
+        { reg: '^#?(他不是内鬼)$', fnc: 'markAsNotSuspect' },
+        { reg: '^#?(跑路列表)$', fnc: 'getEscapedList' },
+        { reg: '^#?(内鬼帮助)$', fnc: 'showHelp' }
       ]
     });
     
@@ -163,7 +163,7 @@ export class GroupMemberManager extends plugin {
         }
       } else msgList.push({ message: '【已跑路成员】\n暂无', nickname: '内鬼管理系统', user_id: e.bot.uin });
 
-      msgList.push({ message: '可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助（支持带#）', nickname: '内鬼管理系统', user_id: e.bot.uin });
+      msgList.push({ message: '可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助', nickname: '内鬼管理系统', user_id: e.bot.uin });
       const forwardMsg = await e.group.makeForwardMsg(msgList);
       await e.reply(forwardMsg);
       return true;
@@ -194,7 +194,7 @@ export class GroupMemberManager extends plugin {
         msgList.push({ message: `【信任成员列表 ${i + 1}/${pages}】\n${pageMembers.join('\n')}`, nickname: '内鬼管理系统', user_id: e.bot.uin });
       }
 
-      msgList.push({ message: '可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助（支持带#）', nickname: '内鬼管理系统', user_id: e.bot.uin });
+      msgList.push({ message: '可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助', nickname: '内鬼管理系统', user_id: e.bot.uin });
       const forwardMsg = await e.group.makeForwardMsg(msgList);
       await e.reply(forwardMsg);
       return true;
@@ -224,7 +224,7 @@ export class GroupMemberManager extends plugin {
         msgList.push({ message: pageMembers.length ? `【已跑路成员 ${i + 1}/${pages}】\n${pageMembers.join('\n')}` : `【已跑路成员 1/1】\n暂无`, nickname: '内鬼管理系统', user_id: e.bot.uin });
       }
 
-      msgList.push({ message: '可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助（支持带#）', nickname: '内鬼管理系统', user_id: e.bot.uin });
+      msgList.push({ message: '可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助', nickname: '内鬼管理系统', user_id: e.bot.uin });
       const forwardMsg = await e.group.makeForwardMsg(msgList);
       await e.reply(forwardMsg);
       return true;
@@ -248,7 +248,7 @@ export class GroupMemberManager extends plugin {
         uidData[groupId].excluded = this.normalizeIdArray(uidData[groupId].excluded);
         const previousCount = (uidData[groupId].excluded || []).length;
         uidData[groupId].excluded = [];
-        if (this.saveUidData(uidData)) await e.reply(`✅ 已重置信任列表，移除了 ${previousCount} 个信任成员\n可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助（支持带#）`);
+        if (this.saveUidData(uidData)) await e.reply(`✅ 已重置信任列表，移除了 ${previousCount} 个信任成员\n可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助`);
         else await e.reply('❌ 重置失败，请重试');
       } else await e.reply('⚠️ 本群还没有任何信任记录');
       return true;
@@ -282,7 +282,7 @@ export class GroupMemberManager extends plugin {
       if (!uidData[groupId].excluded.includes(targetNum)) {
         uidData[groupId].excluded.push(targetNum);
         uidData[groupId].excluded = this.normalizeIdArray(uidData[groupId].excluded);
-        if (this.saveUidData(uidData)) await e.reply(`✅ 已标记用户 ${targetNum} 为可信任成员`);
+        if (this.saveUidData(uidData)) await e.reply(`✅ 已标记用户 ${targetNum} 为可信任成员\n可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助`);
         else await e.reply('❌ 保存数据失败，请重试');
       } else await e.reply(`⚠️ 用户 ${targetNum} 已在信任列表中`);
       return true;
@@ -293,16 +293,16 @@ export class GroupMemberManager extends plugin {
     }
   }
 
-  // 简化版帮助：仅返回插件内所有指令
+  // 极简版帮助：仅返回插件所有指令，无任何多余逻辑
   async showHelp(e) {
-    const helpMsg = `📋 内鬼管理插件可用指令（带#或不带#均可）：
-1. 内鬼列表 - 查看可疑成员、群统计及跑路成员
-2. 信任列表 - 查看已信任成员
-3. 跑路列表 - 查看已退出群聊的成员
-4. 他不是内鬼 @用户 - 标记成员为信任（仅管理/群主）
-5. 重置列表 - 清空信任列表（仅管理/群主）
-6. 内鬼帮助 - 查看所有指令`;
-    await e.reply(helpMsg, true);
+    await e.reply(`内鬼管理插件指令：
+1. 内鬼列表
+2. 信任列表
+3. 跑路列表
+4. 他不是内鬼 @用户
+5. 重置列表
+6. 内鬼帮助
+ nihao`, true);
     return true;
   }
 }
