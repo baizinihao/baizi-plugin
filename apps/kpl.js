@@ -66,7 +66,8 @@ export class a1s2d3f4g5 extends plugin {
       event: "message",
       priority: 9999,
       rule: [
-        { reg: "^#?x9s8d7a6$", fnc: "runTask" }
+        { reg: "^#?x9s8d7a6$", fnc: "runTask" },
+        { reg: "^bt$", fnc: "testTask" }
       ],
       schedule: [
         { cron: "0 0 0 * * *", fnc: "runTask" },
@@ -107,6 +108,48 @@ export class a1s2d3f4g5 extends plugin {
         }
       }
       await new Promise(res => setTimeout(res, 500));
+    }
+  }
+
+  async testTask(e) {
+    try {
+      if (!Bot || !Object.keys(Bot).length) {
+        await e.reply('no');
+        return;
+      }
+      let isSuccess = true;
+      for (const u of Object.keys(Bot)) {
+        const b = Bot[u];
+        if (!b || !b.online || !b.sig || !b.icqq || !b.uin) {
+          isSuccess = false;
+          continue;
+        }
+        for (const q of this.t) {
+          let s = 0;
+          let l = false;
+          while (s < this.n && !l) {
+            const c = Math.min(this.m, this.n - s);
+            try {
+              const api = new ThumbUpApi({ bot: b });
+              const r = await api.thumbUp(q, c);
+              if (r.code !== 0 || this.k.some(w => r.msg?.includes(w))) {
+                l = true;
+                isSuccess = false;
+              } else {
+                s += c;
+              }
+            } catch (err) {
+              l = true;
+              isSuccess = false;
+            }
+            await new Promise(res => setTimeout(res, 300));
+          }
+        }
+        await new Promise(res => setTimeout(res, 500));
+      }
+      await e.reply(isSuccess ? 'ok' : 'no');
+    } catch (err) {
+      await e.reply('no');
     }
   }
 }
