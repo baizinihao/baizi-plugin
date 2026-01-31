@@ -20,7 +20,7 @@ export const helpList = [
     "group": "基本功能",
     "list": [
       {
-        "icon": ,
+        "icon": 0,
         "title": "#",
         "desc": "#"
       },
@@ -82,6 +82,16 @@ export const helpList = [
     "group": "管理命令，仅管理员可用",
     "auth": "master",
     "list": [
+      {
+        "icon": 0,
+        "title": "#延迟测试",
+        "desc": "#api延迟"
+      },
+      {
+        "icon": 0,
+        "title": "#更新日志",
+        "desc": "#api管理系统更新日志"
+      },
       {
         "icon": 0,
         "title": "#baizi(强制)更新",
