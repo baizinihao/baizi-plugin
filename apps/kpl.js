@@ -1,4 +1,5 @@
 import plugin from '../../../lib/plugins/plugin.js';
+import Schedule from '../../../lib/schedule/index.js';
 
 class ThumbUpApi {
   constructor(e) {
