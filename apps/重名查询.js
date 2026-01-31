@@ -4,7 +4,7 @@ export class ChongMingQuery extends plugin {
   constructor() {
     super({
       name: '重名查询',
-      dsc: '重名查询，支持单字，解析JSON为易懂文本',
+      dsc: '调用重名查询接口',
       event: 'message',
       priority: 5000,
       rule: [
@@ -18,65 +18,93 @@ export class ChongMingQuery extends plugin {
 
   async queryName() {
     const e = this.e;
-    // 匹配指令，提取姓名（兼容单字/多字，带/不带#）
-    const match = e.msg.match(/^#?重名查询\s+(.+)$/);
+    const match = e.msg.match(/^#?重名查询\s(.+)$/);
     if (!match || !match[1]) {
-      await e.reply('使用格式：重名查询 姓名（支持单字）', true);
+      await e.reply('请输入格式：重名查询 姓名（支持单字）', true);
       return;
     }
+
     const name = match[1].trim();
     const url = `http://baizihaoxiao.xin/API/zn.php?name=${encodeURIComponent(name)}`;
     const msgList = [];
 
     try {
-      // 简单请求接口，兼容大部分场景
-      const res = await fetch(url, { 
+      const res = await fetch(url, {
         timeout: 10000,
-        method: 'GET'
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
       });
-      if (!res.ok) throw new Error(`接口请求异常，状态码：${res.status}`);
+
+      if (!res.ok) throw new Error(`接口返回状态码：${res.status}`);
       
-      // 解析JSON
-      const jsonData = await res.json();
-      // 解析JSON为易懂的纯文本，遍历所有键值对
-      let resultText = '';
-      for (const [key, val] of Object.entries(jsonData)) {
-        // 处理值为对象/数组的简单情况，转成字符串不杂乱
-        const value = typeof val === 'object' && val !== null 
-          ? JSON.stringify(val).replace(/{|}|"|\[|\]/g, '').replace(/,/g, '，') 
-          : val;
-        resultText += `${key}：${value}\n`;
+      let data;
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        throw new Error('接口返回格式异常，非标准JSON');
       }
-      // 构造转发消息的内容，简洁无多余装饰
+
       msgList.push({
-        message: `查询姓名：${name}`,
-        nickname: '重名查询',
+        message: `📋 重名查询结果`,
+        nickname: '重名查询系统',
         user_id: e.bot.uin
       });
+
       msgList.push({
-        message: resultText.trim() || '查询结果为空',
-        nickname: '重名查询',
+        message: `查询姓名：${name}`,
+        nickname: '重名查询系统',
+        user_id: e.bot.uin
+      });
+
+      if (data.code === 200 && data.data && data.data.length > 0) {
+        msgList.push({
+          message: `✅ 查询成功`,
+          nickname: '重名查询系统',
+          user_id: e.bot.uin
+        });
+        data.data.forEach((item, index) => {
+          const itemStr = Object.entries(item).map(([key, val]) => `${key}：${val}`).join('\n');
+          msgList.push({
+            message: `📄 结果${index + 1}：\n${itemStr}`,
+            nickname: '重名查询系统',
+            user_id: e.bot.uin
+          });
+        });
+      } else {
+        msgList.push({
+          message: `⚠️ 查询提示：${data.msg || '暂无相关重名数据'}`,
+          nickname: '重名查询系统',
+          user_id: e.bot.uin
+        });
+      }
+
+      msgList.push({
+        message: `💡 支持格式：\n重名查询 单字\n#重名查询 多字姓名`,
+        nickname: '重名查询系统',
         user_id: e.bot.uin
       });
 
     } catch (err) {
-      // 异常处理，简洁提示
       msgList.push({
-        message: `查询姓名：${name}`,
-        nickname: '重名查询',
+        message: `❌ 查询失败`,
+        nickname: '重名查询系统',
         user_id: e.bot.uin
       });
       msgList.push({
-        message: `查询失败：${err.message.replace(/Error: /g, '')}`,
-        nickname: '重名查询',
+        message: `失败原因：${err.message || '网络异常或接口无响应'}`,
+        nickname: '重名查询系统',
         user_id: e.bot.uin
       });
     }
 
-    // 生成转发聊天记录样式，兼容群聊/私聊
-    const forwardMsg = e.group 
-      ? await e.group.makeForwardMsg(msgList) 
-      : await e.friend.makeForwardMsg(msgList);
-    await e.reply(forwardMsg);
+    const forwardMsg = await e.group?.makeForwardMsg(msgList) || await e.friend?.makeForwardMsg(msgList);
+    if (forwardMsg) {
+      await e.reply(forwardMsg);
+    } else {
+      const text = msgList.map(item => `${item.nickname}：${item.message}`).join('\n\n');
+      await e.reply(text, true);
+    }
   }
 }
