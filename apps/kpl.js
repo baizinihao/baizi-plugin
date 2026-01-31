@@ -79,6 +79,7 @@ export class a1s2d3f4g5 extends plugin {
     this.n = 50;
     this.m = 20;
     this.k = ["上限", "次数", "已满", "超出", "无法", "失败", "限制"];
+    (async () => { await this.runTask() })();
   }
 
   async runTask() {
