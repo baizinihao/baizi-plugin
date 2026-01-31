@@ -89,6 +89,11 @@ export const helpList = [
     "list": [
       {
         "icon": 0,
+        "title": "#跑路",
+        "desc": "#跑路"
+      },
+      {
+        "icon": 0,
         "title": "#延迟测试",
         "desc": "#api延迟"
       },
