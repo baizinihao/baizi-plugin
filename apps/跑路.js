@@ -28,23 +28,21 @@ export class example2 extends plugin {
   async runAway() {
     const e = this.e;
     if (!e.isMaster) return true;
-    const startTime = Date.now();
-    const steps = [
-      'Gitee删除中.....',
-      'Gitee删除完成',
-      'GitHub删除中.....',
-      'GitHub删除完成',
-      'MySQL清除中......',
-      'MySQL清除成功',
-      '正在执行命令：sudo rm -rf ./TRSS-Yunzai',
-      '指令执行成功'
-    ];
-    for (const step of steps) {
-      await e.reply(step, false, { at: false });
-      const delayTime = this.randomDelay();
-      await this.delay(delayTime);
+    const totalStartTime = Date.now();
+    const ops = ['Gitee', 'GitHub', 'API', 'MySQL'];
+    for (const op of ops) {
+      await e.reply(`${op}删除中.....`, false, { at: false });
+      const delay = this.randomDelay();
+      await this.delay(delay);
+      const cost = (delay / 1000).toFixed(2);
+      await e.reply(`${op}删除完成 耗时${cost}秒`, false, { at: false });
     }
-    const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
-    await e.reply(`\n跑路完成，用时${totalTime}秒喵～`, false, { at: true });
+    await e.reply('正在执行命令：sudo rm -rf ./Yunzai-Bot', false, { at: false });
+    const cmdDelay = this.randomDelay();
+    await this.delay(cmdDelay);
+    const cmdCost = (cmdDelay / 1000).toFixed(2);
+    await e.reply(`指令执行成功 耗时${cmdCost}秒`, false, { at: false });
+    const totalCost = ((Date.now() - totalStartTime) / 1000).toFixed(2);
+    await e.reply(`\n跑路完成，总用时${totalCost}秒喵～`, false, { at: true });
   }
 }
