@@ -83,21 +83,6 @@ export const helpList = [
     "auth": "master",
     "list": [
       {
-        "icon": ,
-        "title": "#更新日志",
-        "desc": "#api管理系统更新日志"
-      },
-      {
-        "icon": ,
-        "title": "#延迟测试",
-        "desc": "#延迟"
-      },
-      {
-        "icon": ,
-        "title": "#调用统计",
-        "desc": "#调用"
-      },
-      {
         "icon": 0,
         "title": "#baizi(强制)更新",
         "desc": "更新baizi插件"
