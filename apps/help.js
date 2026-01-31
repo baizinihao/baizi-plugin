@@ -6,13 +6,13 @@ import Theme from './help/theme.js'
 export class example extends plugin {
   constructor() {
     super({
-      name: 'baizi插件帮助',
-      dsc: 'baizi插件帮助',
+      name: '白子插件菜单',
+      dsc: '白子插件的菜单帮助',
       event: 'message',
       priority: -10,
       rule: [
         {
-          reg: '^#?(baizi|白子)(插件)?(命令|帮助|功能|指令|菜单)$',
+          reg: '^#?(白子菜单|菜单)$',
           fnc: 'help'
         }
       ]
