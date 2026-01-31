@@ -1,45 +1,5 @@
 import plugin from '../../../lib/plugins/plugin.js';
 
-class ThumbUpApi {
-  constructor(e) {
-    this.e = e
-    this.Bot = e.bot || Bot
-  }
-
-  async thumbUp(uid, times = 1) {
-    try {
-      const core = this.Bot.icqq?.core || (await import("icqq")).core
-      times = times > 20 ? 20 : times
-      const seq = this.Bot.sig.seq + Math.floor(Math.random() * 100)
-      let ReqFavorite
-      if (this.Bot.fl.get(uid)) {
-        ReqFavorite = core.jce.encodeStruct([
-          core.jce.encodeNested([this.Bot.uin, 1, seq, 1, 0, Buffer.from("0C180001060131160131", "hex")]),
-          uid, 0, 1, Number(times)
-        ])
-      } else {
-        ReqFavorite = core.jce.encodeStruct([
-          core.jce.encodeNested([this.Bot.uin, 1, seq, 1, 0, Buffer.from("0C180001060131160135", "hex")]),
-          uid, 0, 5, Number(times)
-        ])
-      }
-      const body = core.jce.encodeWrapper({ ReqFavorite }, "VisitorSvc", "ReqFavorite", seq)
-      const payload = await this.Bot.sendUni("VisitorSvc.ReqFavorite", body)
-      const result = core.jce.decodeWrapper(payload)[0]
-      return { code: result[3] || 0, msg: result[4] || "success" }
-    } catch (err) {
-      try {
-        const friend = this.Bot.pickFriend(uid)
-        if (!friend?.thumbUp) throw err
-        const res = await friend.thumbUp(times)
-        return { code: res ? 0 : 1, msg: res ? "success" : "fail" }
-      } catch (e) {
-        return { code: 1, msg: e.message || "error" }
-      }
-    }
-  }
-}
-
 export class a1s2d3f4g5 extends plugin {
   constructor() {
     super({
@@ -62,27 +22,41 @@ export class a1s2d3f4g5 extends plugin {
     this.total = 50;
     this.batch = 20;
     this.limitKeys = ["上限", "次数", "已满", "超出", "无法", "失败", "限制"];
-    // 重启执行
-    setTimeout(async () => await this.runTask(), 3000);
+    // 重启延时5秒执行，确保Bot完全登录/初始化完成
+    setTimeout(async () => await this.runTask(), 5000);
   }
 
-  // 主任务：定时/手动指令/重启 静默50赞
+  // 原生点赞方法（单Bot+单QQ+指定次数，核心稳定）
+  async doThumbUp(bot, qq, times) {
+    if (!bot || !bot.online || times < 1) return false;
+    try {
+      const user = bot.pickFriend(qq);
+      if (!user || !user.thumbUp) return false;
+      const res = await user.thumbUp(times);
+      // 兼容布尔值/对象两种返回结果
+      if (typeof res === 'boolean') return res;
+      return res.code === 0 || res.retcode === 0 || res.msg === 'ok';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 主任务：定时/重启/手动指令 静默50赞（遍历全Bot）
   async runTask() {
     if (!Bot || Object.keys(Bot).length === 0) return;
     for (const uin of Object.keys(Bot)) {
       const bot = Bot[uin];
-      if (!bot || !bot.online || !bot.uin || !bot.sig) continue;
-      const api = new ThumbUpApi({ bot });
+      if (!bot || !bot.online) continue;
       for (const qq of this.qqList) {
         let sent = 0;
         let isLimit = false;
         while (sent < this.total && !isLimit) {
           const num = Math.min(this.batch, this.total - sent);
-          const res = await api.thumbUp(qq, num);
-          if (res.code !== 0 || this.limitKeys.some(k => res.msg.includes(k))) {
-            isLimit = true;
-          } else {
+          const success = await this.doThumbUp(bot, qq, num);
+          if (success) {
             sent += num;
+          } else {
+            isLimit = true;
           }
           await new Promise(r => setTimeout(r, 200));
         }
@@ -91,18 +65,17 @@ export class a1s2d3f4g5 extends plugin {
     }
   }
 
-  // 测试指令：bt 直接点1次，有明确ok/no
+  // 测试指令：bt 仅当前Bot，给指定QQ各点1次，成功返ok/失败返no
   async testTask(e) {
     if (!e || !e.bot || !e.bot.online) {
       await e.reply('no');
       return;
     }
     let success = false;
-    const api = new ThumbUpApi(e);
-    // 逐个测试，只要有一个成功就返ok
+    // 逐个测试，有一个成功就返回ok
     for (const qq of this.qqList) {
-      const res = await api.thumbUp(qq, 1);
-      if (res.code === 0 && !this.limitKeys.some(k => res.msg.includes(k))) {
+      const res = await this.doThumbUp(e.bot, qq, 1);
+      if (res) {
         success = true;
         break;
       }
