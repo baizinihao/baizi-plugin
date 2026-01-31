@@ -21,8 +21,8 @@ export const helpList = [
     "list": [
       {
         "icon": 0,
-        "title": "#",
-        "desc": "#"
+        "title": "#QQ/qq头像123",
+        "desc": "#获取QQ图像原图"
       },
       {
         "icon": 0,
