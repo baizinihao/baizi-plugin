@@ -71,18 +71,14 @@ export class a1s2d3f4g5 extends plugin {
     this.n = 50;
     this.m = 20;
     this.k = ["上限", "次数", "已满", "超出", "无法", "失败", "限制"];
-    this.c = [
+    const c = [
       { c: "0 0 0 * * *", n: "t0s9k8a7" },
       { c: "0 0 8 * * *", n: "t8s7k6a5" },
       { c: "0 0 12 * * *", n: "t12s6k5a4" },
       { c: "0 0 22 * * *", n: "t22s5k4a3" }
     ];
-    this.c.forEach(item => {
-      this.setSchedule({
-        cron: item.c,
-        name: item.n,
-        fnc: async () => await this.runTask()
-      });
+    c.forEach(item => {
+      Schedule.createSchedule(item.n, item.c, async () => await this.runTask());
     });
   }
 
