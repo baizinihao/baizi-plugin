@@ -21,6 +21,12 @@ export const helpList = [
     "list": [
       {
         "icon": 2,
+        "title": "#风景视频",
+        "desc": "风景视频"
+      },
+
+      {
+        "icon": 2,
         "title": "#随机emo文案",
         "desc": "#随机发送一条emo的文案"
       },
