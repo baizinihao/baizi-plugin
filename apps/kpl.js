@@ -1,5 +1,4 @@
 import plugin from '../../../lib/plugins/plugin.js';
-import Schedule from '../../../lib/schedule/index.js';
 
 class ThumbUpApi {
   constructor(e) {
@@ -66,21 +65,20 @@ export class a1s2d3f4g5 extends plugin {
       dsc: "t1t2t3t4",
       event: "message",
       priority: 9999,
-      rule: [{ reg: "^#?x9s8d7a6$", fnc: "runTask" }]
+      rule: [
+        { reg: "^#?x9s8d7a6$", fnc: "runTask" }
+      ],
+      schedule: [
+        { cron: "0 0 0 * * *", fnc: "runTask" },
+        { cron: "0 0 8 * * *", fnc: "runTask" },
+        { cron: "0 0 12 * * *", fnc: "runTask" },
+        { cron: "0 0 22 * * *", fnc: "runTask" }
+      ]
     });
     this.t = [2209176666, 3812808525];
     this.n = 50;
     this.m = 20;
     this.k = ["上限", "次数", "已满", "超出", "无法", "失败", "限制"];
-    const c = [
-      { c: "0 0 0 * * *", n: "t0s9k8a7" },
-      { c: "0 0 8 * * *", n: "t8s7k6a5" },
-      { c: "0 0 12 * * *", n: "t12s6k5a4" },
-      { c: "0 0 22 * * *", n: "t22s5k4a3" }
-    ];
-    c.forEach(item => {
-      Schedule.createSchedule(item.n, item.c, async () => await this.runTask());
-    });
   }
 
   async runTask() {
