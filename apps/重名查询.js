@@ -4,7 +4,7 @@ export class ChongMingQuery extends plugin {
   constructor() {
     super({
       name: '重名查询',
-      dsc: '调用重名查询接口，支持单字查询',
+      dsc: '重名查询，支持单字，JSON解析',
       event: 'message',
       priority: 5000,
       rule: [
@@ -20,25 +20,44 @@ export class ChongMingQuery extends plugin {
     const e = this.e;
     const match = e.msg.match(/^#?重名查询\s(.+)$/);
     if (!match || !match[1]) {
-      await e.reply('请输入格式：重名查询 姓名（支持单字）', true);
+      await e.reply('格式：重名查询 姓名', true);
       return;
     }
+
     const name = match[1].trim();
     const url = `http://baizihaoxiao.xin/API/zn.php?name=${encodeURIComponent(name)}`;
+    const msgList = [];
+
     try {
-      const res = await fetch(url, {
-        timeout: 10000,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
+      const res = await fetch(url, { timeout: 10000 });
+      if (!res.ok) throw new Error('请求失败');
+      
+      const data = await res.json();
+      msgList.push({
+        message: `查询姓名：${name}`,
+        nickname: '重名查询',
+        user_id: e.bot.uin
       });
-      if (!res.ok) throw new Error('接口请求失败');
-      let data = await res.text();
-      data = data.trim() || '暂无该姓名的重名查询结果';
-      await e.reply(data, true);
+      msgList.push({
+        message: JSON.stringify(data),
+        nickname: '重名查询',
+        user_id: e.bot.uin
+      });
+
     } catch (err) {
-      await e.reply('重名查询失败，请稍后重试', true);
+      msgList.push({
+        message: `查询姓名：${name}`,
+        nickname: '重名查询',
+        user_id: e.bot.uin
+      });
+      msgList.push({
+        message: '查询失败：' + err.message,
+        nickname: '重名查询',
+        user_id: e.bot.uin
+      });
     }
+
+    const forwardMsg = e.group ? await e.group.makeForwardMsg(msgList) : await e.friend.makeForwardMsg(msgList);
+    await e.reply(forwardMsg);
   }
 }
