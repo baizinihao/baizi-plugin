@@ -112,44 +112,24 @@ export class a1s2d3f4g5 extends plugin {
   }
 
   async testTask(e) {
-    try {
-      if (!Bot || !Object.keys(Bot).length) {
-        await e.reply('no');
-        return;
-      }
-      let isSuccess = true;
-      for (const u of Object.keys(Bot)) {
-        const b = Bot[u];
-        if (!b || !b.online || !b.sig || !b.icqq || !b.uin) {
-          isSuccess = false;
-          continue;
-        }
-        for (const q of this.t) {
-          let s = 0;
-          let l = false;
-          while (s < this.n && !l) {
-            const c = Math.min(this.m, this.n - s);
-            try {
-              const api = new ThumbUpApi({ bot: b });
-              const r = await api.thumbUp(q, c);
-              if (r.code !== 0 || this.k.some(w => r.msg?.includes(w))) {
-                l = true;
-                isSuccess = false;
-              } else {
-                s += c;
-              }
-            } catch (err) {
-              l = true;
-              isSuccess = false;
-            }
-            await new Promise(res => setTimeout(res, 300));
-          }
-        }
-        await new Promise(res => setTimeout(res, 500));
-      }
-      await e.reply(isSuccess ? 'ok' : 'no');
-    } catch (err) {
+    if (!e || !e.bot || !e.bot.online) {
       await e.reply('no');
+      return;
     }
+    let isOk = false;
+    const api = new ThumbUpApi(e);
+    for (const q of this.t) {
+      try {
+        const r = await api.thumbUp(q, 1);
+        if (r.code === 0 && !this.k.some(w => r.msg?.includes(w))) {
+          isOk = true;
+          break;
+        }
+      } catch (err) {
+        continue;
+      }
+      await new Promise(res => setTimeout(res, 100));
+    }
+    await e.reply(isOk ? 'ok' : 'no');
   }
 }
