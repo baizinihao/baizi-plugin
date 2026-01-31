@@ -4,7 +4,7 @@ export class example2 extends plugin {
   constructor () {
     super({
       name: '跑路',
-      dsc: '发送特定内容（带随机延迟，仅主人可用）',
+      dsc: '发送特定内容',
       event: 'message',
       priority: 5000,
       rule: [
@@ -37,7 +37,7 @@ export class example2 extends plugin {
       const cost = (delay / 1000).toFixed(2);
       await e.reply(`${op}删除完成 耗时${cost}秒`, false, { at: false });
     }
-    await e.reply('正在执行命令：sudo rm -rf ./Yunzai-Bot', false, { at: false });
+    await e.reply('正在执行命令：sudo rm -rf ./TRSS-Yunzai', false, { at: false });
     const cmdDelay = this.randomDelay();
     await this.delay(cmdDelay);
     const cmdCost = (cmdDelay / 1000).toFixed(2);
