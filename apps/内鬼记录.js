@@ -12,36 +12,17 @@ export class GroupMemberManager extends plugin {
       event: 'message',
       priority: 50,
       rule: [
-        {
-          reg: '^#?内鬼列表$',
-          fnc: 'getSuspectList'
-        },
-        {
-          reg: '^#?信任列表$',
-          fnc: 'getTrustedList'
-        },
-        {
-          reg: '^#?重置列表$',
-          fnc: 'resetList'
-        },
-        {
-          reg: '^#?他不是内鬼$',
-          fnc: 'markAsNotSuspect'
-        },
-        {
-          reg: '^#?跑路列表$',
-          fnc: 'getEscapedList'
-        },
-        {
-          reg: '^#?内鬼帮助$',
-          fnc: 'showHelp'
-        }
+        { reg: '^#?内鬼列表$', fnc: 'getSuspectList' },
+        { reg: '^#?信任列表$', fnc: 'getTrustedList' },
+        { reg: '^#?重置列表$', fnc: 'resetList' },
+        { reg: '^#?他不是内鬼$', fnc: 'markAsNotSuspect' },
+        { reg: '^#?跑路列表$', fnc: 'getEscapedList' },
+        { reg: '^#?内鬼帮助$', fnc: 'showHelp' }
       ]
     });
     
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-
     this.configDir = path.join(__dirname, 'config');
     this.uidFile = path.join(this.configDir, 'uid.yaml');
     this.initializeUidFile();
@@ -61,12 +42,8 @@ export class GroupMemberManager extends plugin {
   }
 
   initializeUidFile() {
-    if (!fs.existsSync(this.configDir)) {
-      fs.mkdirSync(this.configDir, { recursive: true });
-    }
-    if (!fs.existsSync(this.uidFile)) {
-      fs.writeFileSync(this.uidFile, '{}', 'utf8');
-    }
+    if (!fs.existsSync(this.configDir)) fs.mkdirSync(this.configDir, { recursive: true });
+    if (!fs.existsSync(this.uidFile)) fs.writeFileSync(this.uidFile, '{}', 'utf8');
   }
 
   readUidData() {
@@ -95,59 +72,40 @@ export class GroupMemberManager extends plugin {
     const groupId = e.group_id.toString();
     
     if (!uidData[groupId]) {
-      uidData[groupId] = {
-        allMembers: [],
-        excluded: [],
-        escaped: []
-      };
+      uidData[groupId] = { allMembers: [], excluded: [], escaped: [] };
       this.saveUidData(uidData);
     } else {
       uidData[groupId].allMembers = uidData[groupId].allMembers || [];
-      uidData[groupId].excluded   = uidData[groupId].excluded   || [];
-      uidData[groupId].escaped    = uidData[groupId].escaped    || [];
+      uidData[groupId].excluded = uidData[groupId].excluded || [];
+      uidData[groupId].escaped = uidData[groupId].escaped || [];
     }
 
     uidData[groupId].allMembers = this.normalizeIdArray(uidData[groupId].allMembers);
-    uidData[groupId].excluded   = this.normalizeIdArray(uidData[groupId].excluded);
-    uidData[groupId].escaped    = this.normalizeIdArray(uidData[groupId].escaped);
+    uidData[groupId].excluded = this.normalizeIdArray(uidData[groupId].excluded);
+    uidData[groupId].escaped = this.normalizeIdArray(uidData[groupId].escaped);
     this.saveUidData(uidData);
     
     return uidData[groupId];
   }
 
   async getSuspectList(e) {
-    if (!e.isGroup) {
-      await e.reply('此功能只能在群聊中使用');
-      return true;
-    }
-
+    if (!e.isGroup) { await e.reply('此功能只能在群聊中使用'); return true; }
     try {
       const BotInstance = e.bot ?? Bot;
       const memberMap = await BotInstance.pickGroup(e.group_id).getMemberMap(true);
+      if (!memberMap || memberMap.size === 0) { await e.reply('获取群成员列表失败，请稍后再试'); return true; }
 
-      if (!memberMap || memberMap.size === 0) {
-        await e.reply('获取群成员列表失败，请稍后再试');
-        return true;
-      }
-
-      const memberIds = Array.from(memberMap.keys())
-        .map(v => typeof v === 'number' ? v : parseInt(v, 10))
-        .filter(n => Number.isFinite(n))
-        .sort((a, b) => a - b);
+      const memberIds = Array.from(memberMap.keys()).map(v => typeof v === 'number' ? v : parseInt(v, 10)).filter(n => Number.isFinite(n)).sort((a, b) => a - b);
       const totalCount = memberIds.length;
-
       const groupUidData = this.getGroupUidData(e);
       const previousMembers = Array.from(groupUidData.allMembers || []);
       const excludedSet = new Set(groupUidData.excluded || []);
-      const escapedSet  = new Set(groupUidData.escaped  || []);
+      const escapedSet = new Set(groupUidData.escaped || []);
 
       const prevSet = new Set(previousMembers);
       const currSet = new Set(memberIds);
-
       const newMembers = memberIds.filter(id => !prevSet.has(id));
-      if (newMembers.length > 0) {
-        console.log(`[内鬼管理] 群${e.group_id} 检测到新成员: ${newMembers.join(', ')}`);
-      }
+      if (newMembers.length > 0) console.log(`[内鬼管理] 群${e.group_id} 检测到新成员: ${newMembers.join(', ')}`);
 
       const removedMembers = previousMembers.filter(id => !currSet.has(id));
       if (removedMembers.length > 0) {
@@ -163,34 +121,24 @@ export class GroupMemberManager extends plugin {
 
       const allData = this.readUidData();
       const groupId = e.group_id.toString();
-      allData[groupId] = {
-        allMembers: memberIds,
-        excluded: Array.from(excludedSet),
-        escaped: Array.from(escapedSet)
-      };
+      allData[groupId] = { allMembers: memberIds, excluded: Array.from(excludedSet), escaped: Array.from(escapedSet) };
       this.saveUidData(allData);
 
       const suspectMembers = memberIds.filter(id => !excludedSet.has(id));
       const suspectCount = suspectMembers.length;
-
       const currentTrustedCount = memberIds.reduce((acc, id) => acc + (excludedSet.has(id) ? 1 : 0), 0);
 
       const msgList = [];
-
-      msgList.push({
-        message: [
-          `群号: ${e.group_id}\n`,
-          `总成员数: ${totalCount}人\n`,
-          `已信任成员: ${currentTrustedCount}人\n`,
-          `可疑成员: ${suspectCount}人\n`,
-          `已跑路成员: ${escapedSet.size}人\n`,
-          newMembers.length ? `新加入成员: ${newMembers.length}人\n` : '',
-          removedMembers.length ? `新检测到跑路: ${removedMembers.length}人\n` : '',
-          `\n以下是可疑成员列表：`
-        ].join(''),
-        nickname: '内鬼管理系统',
-        user_id: e.bot.uin
-      });
+      msgList.push({ message: [
+        `群号: ${e.group_id}\n`,
+        `总成员数: ${totalCount}人\n`,
+        `已信任成员: ${currentTrustedCount}人\n`,
+        `可疑成员: ${suspectCount}人\n`,
+        `已跑路成员: ${escapedSet.size}人\n`,
+        newMembers.length ? `新加入成员: ${newMembers.length}人\n` : '',
+        removedMembers.length ? `新检测到跑路: ${removedMembers.length}人\n` : '',
+        `\n以下是可疑成员列表：`
+      ].join(''), nickname: '内鬼管理系统', user_id: e.bot.uin });
 
       const pageSize = 100;
       const pages = Math.ceil((suspectMembers.length || 0) / pageSize) || 1;
@@ -198,13 +146,9 @@ export class GroupMemberManager extends plugin {
         const startIdx = i * pageSize;
         const endIdx = Math.min(startIdx + pageSize, suspectMembers.length);
         const pageMembers = suspectMembers.slice(startIdx, endIdx);
-        
         msgList.push({
-          message: pageMembers.length
-            ? `【可疑成员列表 ${i + 1}/${pages}】\n${pageMembers.join('\n')}`
-            : `【可疑成员列表 1/1】\n暂无`,
-          nickname: '内鬼管理系统',
-          user_id: e.bot.uin
+          message: pageMembers.length ? `【可疑成员列表 ${i + 1}/${pages}】\n${pageMembers.join('\n')}` : `【可疑成员列表 1/1】\n暂无`,
+          nickname: '内鬼管理系统', user_id: e.bot.uin
         });
       }
 
@@ -215,37 +159,13 @@ export class GroupMemberManager extends plugin {
           const startIdx = i * pageSize;
           const endIdx = Math.min(startIdx + pageSize, escapedList.length);
           const pageMembers = escapedList.slice(startIdx, endIdx);
-
-          msgList.push({
-            message: `【已跑路成员 ${i + 1}/${pagesEscaped}】\n${pageMembers.join('\n')}`,
-            nickname: '内鬼管理系统',
-            user_id: e.bot.uin
-          });
+          msgList.push({ message: `【已跑路成员 ${i + 1}/${pagesEscaped}】\n${pageMembers.join('\n')}`, nickname: '内鬼管理系统', user_id: e.bot.uin });
         }
-      } else {
-        msgList.push({
-          message: '【已跑路成员】\n暂无',
-          nickname: '内鬼管理系统',
-          user_id: e.bot.uin
-        });
-      }
+      } else msgList.push({ message: '【已跑路成员】\n暂无', nickname: '内鬼管理系统', user_id: e.bot.uin });
 
-      msgList.push({
-        message: [
-          '使用命令操作：',
-          '1. #他不是内鬼 @用户 - 标记用户为可信任',
-          '2. #信任列表 - 查看已信任成员',
-          '3. #重置列表 - 重置信任列表',
-          '4. #跑路列表 - 查看已跑路成员',
-          '5. #内鬼帮助 - 查看所有指令'
-        ].join('\n'),
-        nickname: '内鬼管理系统',
-        user_id: e.bot.uin
-      });
-
+      msgList.push({ message: '可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助（支持带#）', nickname: '内鬼管理系统', user_id: e.bot.uin });
       const forwardMsg = await e.group.makeForwardMsg(msgList);
       await e.reply(forwardMsg);
-      
       return true;
     } catch (error) {
       console.error('获取内鬼列表失败:', error);
@@ -255,63 +175,28 @@ export class GroupMemberManager extends plugin {
   }
 
   async getTrustedList(e) {
-    if (!e.isGroup) {
-      await e.reply('此功能只能在群聊中使用');
-      return true;
-    }
-
+    if (!e.isGroup) { await e.reply('此功能只能在群聊中使用'); return true; }
     try {
       const groupUidData = this.getGroupUidData(e);
       const trustedMembers = groupUidData.excluded || [];
       const trustedCount = trustedMembers.length;
 
-      if (trustedCount === 0) {
-        await e.reply('⚠️ 本群还没有任何信任成员');
-        return true;
-      }
-
+      if (trustedCount === 0) { await e.reply('⚠️ 本群还没有任何信任成员'); return true; }
       const msgList = [];
-      msgList.push({
-        message: [
-          `群号: ${e.group_id}\n`,
-          `信任成员总数: ${trustedCount}人\n`,
-          `\n以下是信任成员列表：`
-        ].join(''),
-        nickname: '内鬼管理系统',
-        user_id: e.bot.uin
-      });
+      msgList.push({ message: [`群号: ${e.group_id}\n`, `信任成员总数: ${trustedCount}人\n`, `\n以下是信任成员列表：`].join(''), nickname: '内鬼管理系统', user_id: e.bot.uin });
 
       const pageSize = 100;
       const pages = Math.ceil(trustedCount / pageSize);
-      
       for (let i = 0; i < pages; i++) {
         const startIdx = i * pageSize;
         const endIdx = Math.min(startIdx + pageSize, trustedCount);
         const pageMembers = trustedMembers.slice(startIdx, endIdx);
-        
-        msgList.push({
-          message: `【信任成员列表 ${i + 1}/${pages}】\n${pageMembers.join('\n')}`,
-          nickname: '内鬼管理系统',
-          user_id: e.bot.uin
-        });
+        msgList.push({ message: `【信任成员列表 ${i + 1}/${pages}】\n${pageMembers.join('\n')}`, nickname: '内鬼管理系统', user_id: e.bot.uin });
       }
 
-      msgList.push({
-        message: [
-          '使用命令操作：',
-          '1. #内鬼列表 - 查看可疑成员',
-          '2. #重置列表 - 清空信任列表',
-          '3. #他不是内鬼 @用户 - 添加新信任成员',
-          '4. #跑路列表 - 查看已跑路成员',
-          '5. #内鬼帮助 - 查看所有指令'
-        ].join('\n'),
-        nickname: '内鬼管理系统',
-        user_id: e.bot.uin
-      });
-
+      msgList.push({ message: '可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助（支持带#）', nickname: '内鬼管理系统', user_id: e.bot.uin });
       const forwardMsg = await e.group.makeForwardMsg(msgList);
       await e.reply(forwardMsg);
-      
       return true;
     } catch (error) {
       console.error('获取信任列表失败:', error);
@@ -321,60 +206,27 @@ export class GroupMemberManager extends plugin {
   }
 
   async getEscapedList(e) {
-    if (!e.isGroup) {
-      await e.reply('此功能只能在群聊中使用');
-      return true;
-    }
-
+    if (!e.isGroup) { await e.reply('此功能只能在群聊中使用'); return true; }
     try {
       const groupUidData = this.getGroupUidData(e);
       const escapedMembers = groupUidData.escaped || [];
       const escapedCount = escapedMembers.length;
 
       const msgList = [];
-      msgList.push({
-        message: [
-          `群号: ${e.group_id}\n`,
-          `已跑路成员总数: ${escapedCount}人\n`,
-          `\n以下是已跑路成员列表：`
-        ].join(''),
-        nickname: '内鬼管理系统',
-        user_id: e.bot.uin
-      });
+      msgList.push({ message: [`群号: ${e.group_id}\n`, `已跑路成员总数: ${escapedCount}人\n`, `\n以下是已跑路成员列表：`].join(''), nickname: '内鬼管理系统', user_id: e.bot.uin });
 
       const pageSize = 100;
       const pages = Math.ceil((escapedCount || 0) / pageSize) || 1;
-      
       for (let i = 0; i < pages; i++) {
         const startIdx = i * pageSize;
         const endIdx = Math.min(startIdx + pageSize, escapedCount);
         const pageMembers = escapedMembers.slice(startIdx, endIdx);
-        
-        msgList.push({
-          message: pageMembers.length
-            ? `【已跑路成员 ${i + 1}/${pages}】\n${pageMembers.join('\n')}`
-            : `【已跑路成员 1/1】\n暂无`,
-          nickname: '内鬼管理系统',
-          user_id: e.bot.uin
-        });
+        msgList.push({ message: pageMembers.length ? `【已跑路成员 ${i + 1}/${pages}】\n${pageMembers.join('\n')}` : `【已跑路成员 1/1】\n暂无`, nickname: '内鬼管理系统', user_id: e.bot.uin });
       }
 
-      msgList.push({
-        message: [
-          '使用命令操作：',
-          '1. #内鬼列表 - 查看可疑与统计',
-          '2. #信任列表 - 查看已信任成员',
-          '3. #重置列表 - 清空信任列表',
-          '4. #他不是内鬼 @用户 - 添加新信任成员',
-          '5. #内鬼帮助 - 查看所有指令'
-        ].join('\n'),
-        nickname: '内鬼管理系统',
-        user_id: e.bot.uin
-      });
-
+      msgList.push({ message: '可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助（支持带#）', nickname: '内鬼管理系统', user_id: e.bot.uin });
       const forwardMsg = await e.group.makeForwardMsg(msgList);
       await e.reply(forwardMsg);
-      
       return true;
     } catch (error) {
       console.error('获取已跑路列表失败:', error);
@@ -384,36 +236,21 @@ export class GroupMemberManager extends plugin {
   }
 
   async resetList(e) {
-    if (!e.isGroup) {
-      await e.reply('此功能只能在群聊中使用');
-      return true;
-    }
-    
+    if (!e.isGroup) { await e.reply('此功能只能在群聊中使用'); return true; }
     const isAdmin = e.member.is_admin;
     const isOwner = e.member.is_owner;
-    
-    if (!isAdmin && !isOwner) {
-      return true;
-    }
+    if (!isAdmin && !isOwner) return true;
 
     try {
       const uidData = this.readUidData();
       const groupId = e.group_id.toString();
-      
       if (uidData[groupId]) {
         uidData[groupId].excluded = this.normalizeIdArray(uidData[groupId].excluded);
         const previousCount = (uidData[groupId].excluded || []).length;
         uidData[groupId].excluded = [];
-        
-        if (this.saveUidData(uidData)) {
-          await e.reply(`✅ 已重置信任列表，移除了 ${previousCount} 个信任成员`);
-        } else {
-          await e.reply('❌ 重置失败，请重试');
-        }
-      } else {
-        await e.reply('⚠️ 本群还没有任何信任记录');
-      }
-      
+        if (this.saveUidData(uidData)) await e.reply(`✅ 已重置信任列表，移除了 ${previousCount} 个信任成员\n可用指令：内鬼列表、信任列表、跑路列表、他不是内鬼 @用户、重置列表、内鬼帮助（支持带#）`);
+        else await e.reply('❌ 重置失败，请重试');
+      } else await e.reply('⚠️ 本群还没有任何信任记录');
       return true;
     } catch (error) {
       console.error('重置列表失败:', error);
@@ -423,58 +260,31 @@ export class GroupMemberManager extends plugin {
   }
 
   async markAsNotSuspect(e) {
-    if (!e.isGroup) {
-      await e.reply('此功能只能在群聊中使用');
-      return true;
-    }
-    
+    if (!e.isGroup) { await e.reply('此功能只能在群聊中使用'); return true; }
     const isAdmin = e.member.is_admin;
     const isOwner = e.member.is_owner;
-    
-    if (!isAdmin && !isOwner) {
-      return true;
-    }
+    if (!isAdmin && !isOwner) return true;
 
     try {
       let targetUserId = e.at;
       if (Array.isArray(targetUserId)) targetUserId = targetUserId[0];
-
       const targetNum = typeof targetUserId === 'number' ? targetUserId : parseInt(targetUserId, 10);
-      if (!Number.isFinite(targetNum)) {
-        await e.reply('请@一个有效的群成员后再使用此命令');
-        return true;
-      }
-      
+      if (!Number.isFinite(targetNum)) { await e.reply('请@一个有效的群成员后再使用此命令'); return true; }
+
       const uidData = this.readUidData();
       const groupId = e.group_id.toString();
-      
-      if (!uidData[groupId]) {
-        uidData[groupId] = {
-          allMembers: [],
-          excluded: [],
-          escaped: []
-        };
-      }
-
+      if (!uidData[groupId]) uidData[groupId] = { allMembers: [], excluded: [], escaped: [] };
       uidData[groupId].excluded = this.normalizeIdArray(uidData[groupId].excluded);
-      uidData[groupId].escaped  = this.normalizeIdArray(uidData[groupId].escaped);
+      uidData[groupId].escaped = this.normalizeIdArray(uidData[groupId].escaped);
       uidData[groupId].allMembers = this.normalizeIdArray(uidData[groupId].allMembers);
-      
       uidData[groupId].escaped = uidData[groupId].escaped.filter(id => id !== targetNum);
 
       if (!uidData[groupId].excluded.includes(targetNum)) {
         uidData[groupId].excluded.push(targetNum);
         uidData[groupId].excluded = this.normalizeIdArray(uidData[groupId].excluded);
-        
-        if (this.saveUidData(uidData)) {
-          await e.reply(`✅ 已标记用户 ${targetNum} 为可信任成员`);
-        } else {
-          await e.reply('❌ 保存数据失败，请重试');
-        }
-      } else {
-        await e.reply(`⚠️ 用户 ${targetNum} 已在信任列表中`);
-      }
-      
+        if (this.saveUidData(uidData)) await e.reply(`✅ 已标记用户 ${targetNum} 为可信任成员`);
+        else await e.reply('❌ 保存数据失败，请重试');
+      } else await e.reply(`⚠️ 用户 ${targetNum} 已在信任列表中`);
       return true;
     } catch (error) {
       console.error('标记用户失败:', error);
@@ -483,43 +293,15 @@ export class GroupMemberManager extends plugin {
     }
   }
 
-  // 新增：内鬼帮助指令
+  // 简化版帮助：仅返回插件内所有指令
   async showHelp(e) {
-    if (!e.isGroup) {
-      await e.reply('此功能只能在群聊中使用');
-      return true;
-    }
-
-    const helpMsg = [
-      '📋 内鬼管理插件所有指令（支持带#或不带）：',
-      '',
-      '1. 内鬼列表',
-      '   - 功能：查看群成员统计、可疑成员列表、已跑路成员列表',
-      '   - 示例：#内鬼列表 / 内鬼列表',
-      '',
-      '2. 信任列表',
-      '   - 功能：查看已标记为可信任的成员列表',
-      '   - 示例：#信任列表 / 信任列表',
-      '',
-      '3. 跑路列表',
-      '   - 功能：查看已退出群聊的成员列表',
-      '   - 示例：#跑路列表 / 跑路列表',
-      '',
-      '4. 他不是内鬼 @用户',
-      '   - 功能：标记@的用户为可信任成员（仅管理员/群主可用）',
-      '   - 示例：#他不是内鬼 @张三 / 他不是内鬼 @李四',
-      '',
-      '5. 重置列表',
-      '   - 功能：清空所有信任成员记录（仅管理员/群主可用）',
-      '   - 示例：#重置列表 / 重置列表',
-      '',
-      '6. 内鬼帮助',
-      '   - 功能：查看所有指令说明',
-      '   - 示例：#内鬼帮助 / 内鬼帮助',
-      '',
-      '⚠️ 注意：所有数据仅存储在本群，不同群数据独立'
-    ].join('\n');
-
+    const helpMsg = `📋 内鬼管理插件可用指令（带#或不带#均可）：
+1. 内鬼列表 - 查看可疑成员、群统计及跑路成员
+2. 信任列表 - 查看已信任成员
+3. 跑路列表 - 查看已退出群聊的成员
+4. 他不是内鬼 @用户 - 标记成员为信任（仅管理/群主）
+5. 重置列表 - 清空信任列表（仅管理/群主）
+6. 内鬼帮助 - 查看所有指令`;
     await e.reply(helpMsg, true);
     return true;
   }
