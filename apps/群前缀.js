@@ -11,8 +11,12 @@ class JsonReader {
     }
     loadConfig() {
         if (fs.existsSync(this.filePath)) {
-            const file = fs.readFileSync(this.filePath, 'utf8');
-            return JSON.parse(file) || {};
+            try {
+                const file = fs.readFileSync(this.filePath, 'utf8');
+                return JSON.parse(file) || {};
+            } catch (e) {
+                return {};
+            }
         }
         fs.writeFileSync(this.filePath, JSON.stringify({}, null, 2), 'utf8');
         return {};
@@ -34,13 +38,13 @@ export class qianzhui extends plugin {
     constructor() {
         super({
             name: '群前缀设置',
-            dsc: '群专属前缀配置，带触发校验',
+            dsc: '群专属前缀配置',
             event: 'message',
-            priority: 1,
+            priority: 0,
             rule: [
                 { reg: '^#群前缀(开启|关闭)$', fnc: 'openPrefix' },
-                { reg: '^#设置前缀.*$', fnc: 'setPrefix' },
-                { reg: '^.*$', fnc: 'beforeDeal', before: true }
+                { reg: '^#设置前缀\\s+(.+)$', fnc: 'setPrefix' },
+                { reg: '^.*$', fnc: 'checkPrefix', before: true }
             ]
         });
         const __filename = fileURLToPath(import.meta.url);
@@ -51,35 +55,34 @@ export class qianzhui extends plugin {
         this.jsonReader = new JsonReader(this.jsonFile);
     }
 
-    async beforeDeal(e) {
+    async checkPrefix(e) {
         if (!e.isGroup) return true;
-        const groupId = e.group_id.toString();
-        const onlyReplyAt = this.jsonReader.get(`${groupId}.onlyReplyAt`) || 0;
-        const botAlias = this.jsonReader.get(`${groupId}.botAlias`) || [];
-        if (onlyReplyAt !== 1) return true;
-        if (e.isAt || e.msg.startsWith('#')) return true;
-        for (const alias of botAlias) {
-            if (e.msg.startsWith(alias)) return true;
+        const groupId = String(e.group_id);
+        const open = this.jsonReader.get(`${groupId}.onlyReplyAt`);
+        if (open !== 1) return true;
+        const msg = e.msg.trim();
+        if (e.isAt || msg.startsWith('#')) return true;
+        const alias = this.jsonReader.get(`${groupId}.botAlias`) || [];
+        for (const pre of alias) {
+            if (msg.startsWith(pre)) return true;
         }
         return false;
     }
 
     async openPrefix(e) {
-        if (!e.isGroup) return await e.reply('此功能仅群聊可用');
         if (!e.isMaster) return await e.reply('权限不足，仅主人可操作');
-        const groupId = e.group_id.toString();
-        const text = e.msg.replace(/#|群前缀/g, "").trim();
-        const value = text === '开启' ? 1 : 0;
-        this.jsonReader.set(`${groupId}.onlyReplyAt`, value);
+        const groupId = String(e.group_id);
+        const type = e.msg.includes('开启') ? 1 : 0;
+        const text = type === 1 ? '开启' : '关闭';
+        this.jsonReader.set(`${groupId}.onlyReplyAt`, type);
         await e.reply(`群前缀回复功能已${text}!`);
     }
 
     async setPrefix(e) {
-        if (!e.isGroup) return await e.reply('此功能仅群聊可用');
         if (!e.isMaster) return await e.reply('权限不足，仅主人可操作');
-        const name = e.msg.replace("#设置前缀", "").trim();
+        const groupId = String(e.group_id);
+        const name = e.msg.replace('#设置前缀', '').trim();
         if (!name) return await e.reply('群前缀不能为空！');
-        const groupId = e.group_id.toString();
         this.jsonReader.set(`${groupId}.botAlias`, [name]);
         await e.reply(`群前缀已设置为【${name}】!`);
     }
