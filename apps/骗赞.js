@@ -20,7 +20,7 @@ export class pz extends plugin {
         { reg: /^#?(骗赞测试)$/i, fnc: 'PZ_Test', log: false },
         { reg: /^#?(((我要|给我)?(资料卡)?点赞|(赞|超|操|草|抄|吵|炒)我)|((赞|超|操|草|抄|吵|炒)(他|她|它|TA))|骗赞)(状态)?$/i, fnc: 'PZ', log: false },
         { reg: '^#(优先(骗赞|椰奶)|(骗赞|椰奶)优先)$', fnc: 'PZ_Set' },
-        { reg: /^#(填写骗赞|骗赞恢复|删除group)$/i, fnc: 'F_R' },
+        { reg: /^#(填写骗赞|骗赞恢复)$/i, fnc: 'F_R' },
         { reg: '^#骗赞帮助$', fnc: 'PZ_Help' }
       ]
     })
@@ -30,7 +30,7 @@ export class pz extends plugin {
 
   async PZ_Test(e) {
     if (Number(e.group_id) !== Number(PZ_ID)) {
-      await this.PZ_Msg(e, '❌ 仅骗赞群可使用测试命令', 0)
+      await this.PZ_Msg(e, '仅骗赞群可使用测试命令', 0)
       return true
     }
     this.Bot = e?.bot ?? Bot
@@ -43,14 +43,14 @@ export class pz extends plugin {
     if (RedisData) {
       const ttl = await redis.ttl(key)
       const h = Math.floor(ttl / 3600), m = Math.floor((ttl % 3600) / 60), s = ttl % 60
-      await this.PZ_Msg(e, `[CQ:at,qq=${H_ID}] ✅ 骗赞插件测试成功！\n当前你有骗赞CD，剩余时间：${h}时${m}分${s}秒\n插件核心逻辑正常运行~`, 0)
+      await this.PZ_Msg(e, `骗赞插件测试成功！\n当前你有骗赞CD，剩余时间：${h}时${m}分${s}秒\n插件核心逻辑正常运行~`, 0)
       return true
     }
 
     let { JNTM, n } = await this.PZ_Res(e, DO, QQ, key)
     const testMsg = n > 0 
-      ? `[CQ:at,qq=${H_ID}] ✅ 骗赞插件测试成功！\n已为你点赞${n}下~` 
-      : `[CQ:at,qq=${H_ID}] ✅ 骗赞插件测试成功（逻辑正常）！\n${JNTM}`
+      ? `骗赞插件测试成功！\n已为你点赞${n}下~` 
+      : `骗赞插件测试成功（逻辑正常）！\n${JNTM}`
     await this.PZ_Msg(e, testMsg, 0)
     return true
   }
@@ -60,20 +60,35 @@ export class pz extends plugin {
     let DO = /超|操|草|抄|吵|炒/.test(e.msg) ? '超' : '赞'
     let QQ = e.at || e.user_id
     let zt = e?.msg?.includes('状态')
-    if (!PZYX && !W_GID.includes(e.group_id) && !zt) return false
     e.message = []
-    if (!e.isMaster && XQ_GID.includes(e.group_id)) return this.PZ_Msg(e, XCY, 0)
-    if (!(e.isMaster || W_GID.includes(e.group_id))) return this.PZ_Msg(e, JYHF)
+    
+    // 移除不必要的权限检查，允许所有人使用
+    if (!e.isMaster && XQ_GID.includes(e.group_id)) {
+      return this.PZ_Msg(e, XCY, 0)
+    }
+    
     let key = `PZ&${e.self_id}&${QQ}`
     let RedisData = await redis.get(key)
+    
     if (zt) {
       let status = RedisData ? '1/1' : '0/1'
       console.log(`[骗赞状态][${QQ}][${status}]`)
       return this.PZ_Msg(e, `『今日骗赞』：「${status}」`)
     }
-    if (RedisData) return Left_Time(QQ, await redis.ttl(key))
+    
+    if (RedisData) {
+      return Left_Time(QQ, await redis.ttl(key))
+    }
+    
     let { JNTM, n } = await this.PZ_Res(e, DO, QQ, key)
-    if (HFKG) await this.PZ_Msg(e, n > 0 ? `今天${DO}了${QQ === e.at ? QQ : '你'}${n}下了哦~\n记得回我！！！${await this.Bot.fl.get(QQ) ? '' : `\nPS：如果${DO}失败记得加我.`}` : JNTM)
+    
+    
+    if (HFKG) {
+      let replyMsg = n > 0 
+        ? `今天${DO}了${QQ === e.at ? QQ : '你'}${n}下了哦~\n记得回我！！！${await this.Bot.fl.get(QQ) ? '' : `\nPS：如果${DO}失败记得加我.`}`
+        : JNTM
+      await this.PZ_Msg(e, replyMsg)
+    }
     return true
   }
 
@@ -86,8 +101,10 @@ export class pz extends plugin {
       try {
         let res = await new thumbUp(e).I_PZ(QQ, 20)
         if (res && res.code != 0) {
-          if (res.code == 1) { JNTM = `${DO}失败，请添加好友.`; logger.error(`[骗赞失败][${QQ}][${Time2}]`) }
-          else {
+          if (res.code == 1) { 
+            JNTM = `${DO}失败，请添加好友.`
+            logger.error(`[骗赞失败][${QQ}][${Time2}]`)
+          } else {
             JNTM = (res.msg ?? '未知情况').replace(/给/g, DO).replace(/点/g, '').replace(/个赞/g, '下').replace(/点赞/g, '').replace(/。/g, '') + '.'
             await this.Redis_Set(key, new_date)
             console.log(`[骗赞成功][${QQ}][${Time2}]`)
@@ -99,7 +116,10 @@ export class pz extends plugin {
           await this.Redis_Set(key, new_date)
           console.log(`[骗赞成功][${QQ}][${Time2}]`)
           return { JNTM: err.error.message + '.', n }
-        } else { logger.error(`[骗赞失败][${QQ}][${Time2}]`); return { JNTM: '未知错误：' + err, n } }
+        } else { 
+          logger.error(`[骗赞失败][${QQ}][${Time2}]`)
+          return { JNTM: '未知错误：' + err, n }
+        }
       }
       n += 10
     }
@@ -110,14 +130,24 @@ export class pz extends plugin {
     console.log('[骗赞][自动点赞][开始]')
     let bots = [].concat(Bot.uin).map(uin => Bot[uin]).filter(bot => bot && !/^[a-zA-Z]+$/.test(bot.uin))
     for (let bot of bots) {
-      if (!Array.from(bot.gl.keys()).map(Number).includes(PZ_ID)) { console.log(`「${bot.nickname || 'Bot'}(${bot.uin})」未加入骗赞群`); continue }
+      if (!Array.from(bot.gl.keys()).map(Number).includes(PZ_ID)) { 
+        console.log(`「${bot.nickname || 'Bot'}(${bot.uin})」未加入骗赞群`)
+        continue 
+      }
       const e = { adapter: bot.adapter, sendLike: bot.sendLike, bot }
       const List = Array.from(await (await bot.pickGroup(PZ_ID).getMemberMap()).values()).map(i => Number(i.user_id))
       for (let ID of List) {
         let key = `PZ&${bot.uin}&${ID}`
-        if (await redis.get(key)) { Left_Time(ID, await redis.ttl(key)); continue }
-        try { await this.PZ_Res(e, '赞', ID, key); await common.sleep(_.sample([1000, 1500, 2000, 2500])) }
-        catch (err) { logger.error(`「${bot.nickname || 'Bot'}(${bot.uin})&${ID}点赞出错：${err}」`) }
+        if (await redis.get(key)) { 
+          Left_Time(ID, await redis.ttl(key))
+          continue 
+        }
+        try { 
+          await this.PZ_Res(e, '赞', ID, key)
+          await common.sleep(_.sample([1000, 1500, 2000, 2500]))
+        } catch (err) { 
+          logger.error(`「${bot.nickname || 'Bot'}(${bot.uin})&${ID}点赞出错：${err}」`) 
+        }
       }
     }
     console.log('[骗赞][自动点赞][结束]')
@@ -125,12 +155,18 @@ export class pz extends plugin {
 
   async PZ_Set(e) {
     if (!e.isMaster) return true
-    if (e.msg.match(/骗赞/)) { await redis.set(`PZYX`, '1'); await this.PZ_Msg(e, '已设置骗赞优先.') }
-    else { await redis.del(`PZYX`); await this.PZ_Msg(e, '已设置椰奶优先.') }
+    if (e.msg.match(/骗赞/)) { 
+      await redis.set(`PZYX`, '1')
+      await this.PZ_Msg(e, '已设置骗赞优先.')
+    } else { 
+      await redis.del(`PZYX`)
+      await this.PZ_Msg(e, '已设置椰奶优先.')
+    }
     return await this.Redis_UP()
   }
 
   async F_R(e) {
+    
     if (e.isMaster || e.user_id == H_ID) {
       let R = e.msg.match(/骗赞恢复/i)
       const GroupPath = './config/config/group.yaml'
@@ -139,13 +175,24 @@ export class pz extends plugin {
         let GroupData = YAML.parse(fs.readFileSync(GroupPath, 'utf8'))
         let ngm = GroupData.hasOwnProperty(String(PZ_ID))
         if (R) {
-          if (ngm) delete GroupData[String(PZ_ID)]; else return await this.PZ_Msg(e, '未添加过配置无需删除.')
-        } else if (!ngm) GroupData[String(PZ_ID)] = { onlyReplyAt: 0, enable: Bot_Type.includes('miao') ? ['骗赞', '重启'] : ['骗赞', '开机', '进程管理'], disable: null }
+          if (ngm) delete GroupData[String(PZ_ID)]
+          else return await this.PZ_Msg(e, '未添加过配置无需删除.')
+        } else if (!ngm) {
+          GroupData[String(PZ_ID)] = { 
+            onlyReplyAt: 0, 
+            enable: Bot_Type.includes('miao') ? ['骗赞', '重启'] : ['骗赞', '开机', '进程管理'], 
+            disable: null 
+          }
+        }
         fs.writeFileSync(GroupPath, YAML.stringify(GroupData), 'utf8')
         await this.PZ_Msg(e, R ? '骗赞群配置已删除.' : '骗赞群配置修改成功~\n发送「#骗赞帮助」查看说明.\nPS：发送「#骗赞恢复」删除骗赞群相关配置.')
-      } catch (err) { await this.PZ_Msg(e, '唔，出错了：' + err) }
+      } catch (err) { 
+        await this.PZ_Msg(e, '唔，出错了：' + err) 
+      }
       return true
-    } else { return e.group_id == PZ_ID || await this.PZ_Msg(e, '滚！', 0) }
+    } else { 
+      return await this.PZ_Msg(e, '你没有权限执行此操作！', 0)
+    }
   }
 
   async PZ_Help(e) {
@@ -162,13 +209,25 @@ export class pz extends plugin {
     await this.PZ_Msg(e, msg)
   }
 
-  PZ_Msg(e, msg, recall = 30) { return e.reply([{ type: 'reply', id: e.message_id }, msg], false, { recallMsg: recall }) }
-  async Redis_UP() { PZYX = await redis.get(`PZYX`) }
-  async Redis_Set(key, time) { await redis.set(key, JSON.stringify({ PZ: 1 }), { EX: parseInt(time) }) }
+  PZ_Msg(e, msg, recall = 30) { 
+    return e.reply([{ type: 'reply', id: e.message_id }, msg], false, { recallMsg: recall }) 
+  }
+  
+  async Redis_UP() { 
+    PZYX = await redis.get(`PZYX`) 
+  }
+  
+  async Redis_Set(key, time) { 
+    await redis.set(key, JSON.stringify({ PZ: 1 }), { EX: parseInt(time) }) 
+  }
 }
 
 class thumbUp {
-  constructor(e) { this.e = e; this.Bot = e.bot ?? Bot }
+  constructor(e) { 
+    this.e = e
+    this.Bot = e.bot ?? Bot 
+  }
+  
   async I_PZ(uid, times = 1) {
     try {
       let core = this.Bot.icqq?.core ?? this.Bot.core
@@ -179,8 +238,11 @@ class thumbUp {
       let payload = await this.Bot.sendUni('VisitorSvc.ReqFavorite', body)
       let result = core.jce.decodeWrapper(payload)[0]
       return { code: result[3], msg: result[4] }
-    } catch (error) { return await this.H_PZ(uid, times) }
+    } catch (error) { 
+      return await this.H_PZ(uid, times) 
+    }
   }
+  
   async H_PZ(uid, times) {
     let thumbUp = this.Bot.pickFriend(uid)?.thumbUp
     if (!thumbUp) throw new Error('当前适配器不支持点赞.')
@@ -189,7 +251,10 @@ class thumbUp {
   }
 }
 
-function Random_Time() { return `0 ${_.random(0, 59)} ${_.random(2, 4)} * * ?` }
+function Random_Time() { 
+  return `0 ${_.random(0, 59)} ${_.random(2, 4)} * * ?` 
+}
+
 function Left_Time(ID, ttl) {
   let h = Math.floor(ttl / 3600), m = Math.floor((ttl % 3600) / 60), s = ttl % 60
   console.log(`[骗赞阻断][${ID}][CD：${h}:${m}:${s}]`)
@@ -199,9 +264,22 @@ async function config() {
   try {
     let config = YAML.parse(fs.readFileSync(configPath, 'utf8'))
     let jntm = ['H_ID', 'PZ_ID', 'XQ_GID', 'W_GID', 'XCY', 'JYHF']
-    jntm.forEach(ngm => { if (!config[ngm]) throw new Error(`[骗赞][缺少配置：${ngm}]`); if (Array.isArray(config[ngm]) && !config[ngm].length) config[ngm].push('你干嘛~哈哈哎哟~') })
-    H_ID = config.H_ID; PZ_ID = config.PZ_ID; W_GID = config.W_GID; XQ_GID = config.XQ_GID; XCY = config.XCY.replace(/\\n/g, '\n'); JYHF = config.JYHF.replace(/\\n/g, '\n'); PZYX = config.PZYX; HFKG = config.HFKH;
-  } catch (err) { logger.error(err.message); return {} }
+    jntm.forEach(ngm => { 
+      if (!config[ngm]) throw new Error(`[骗赞][缺少配置：${ngm}]`)
+      if (Array.isArray(config[ngm]) && !config[ngm].length) config[ngm].push('你干嘛~哈哈哎哟~') 
+    })
+    H_ID = config.H_ID
+    PZ_ID = config.PZ_ID
+    W_GID = config.W_GID
+    XQ_GID = config.XQ_GID
+    XCY = config.XCY.replace(/\\n/g, '\n')
+    JYHF = config.JYHF.replace(/\\n/g, '\n')
+    PZYX = config.PZYX
+    HFKG = config.HFKH
+  } catch (err) { 
+    logger.error(err.message)
+    return {} 
+  }
 }
 
 const WZDSNY = hhay => cfg.package.name.includes('miao') ? hhay() : Bot.once("online", hhay)
@@ -217,9 +295,26 @@ XCY: 暂时关闭点赞功能.\\n可加骗赞群「805020859」\\n要骗赞带�
 JYHF: 暂时关闭点赞功能.
 HFKH: false`;
     fs.writeFileSync(configPath, zwConfig, 'utf8');
-    logger.mark('[骗赞][zw.yaml配置创建成功]')
+    logger.mark('[骗赞][配置创建成功]')
   }
 });
 
-(() => { config(); chokidar.watch(configPath).on("change", _.debounce(() => { try { config(); logger.mark("[骗赞][配置已重载]") } catch { logger.error("[骗赞][配置重载失败]") } }, 1e3)) })()
-Bot.on("message.group", e => /^(#全部赞我|#?骗赞)$/.test(e?.message?.[0]?.text) && (async () => { const Msg = JSON.parse(JSON.stringify(e.message)); await new pz().PZ(e); if (e.user_id == H_ID) e.reply(Msg, false, { recallMsg: 5 }) })())
+(() => { 
+  config()
+  chokidar.watch(configPath).on("change", _.debounce(() => { 
+    try { 
+      config()
+      logger.mark("[骗赞][配置已重载]") 
+    } catch { 
+      logger.error("[骗赞][配置重载失败]") 
+    } 
+  }, 1e3)) 
+})()
+
+
+Bot.on("message.group", e => {
+  if (/^(#全部赞我|#?骗赞)$/.test(e?.message?.[0]?.text)) {
+    const Msg = JSON.parse(JSON.stringify(e.message))
+    new pz().PZ(e)
+  }
+})
