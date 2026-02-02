@@ -85,7 +85,14 @@ export class pz extends plugin {
       ]
     })
     this.Redis_UP()
-    this.task = { cron: Random_Time(), name: '自动点赞', fnc: () => this.Auto_Like() }
+    // 设置多个定时任务
+    this.task = [
+      { cron: '0 0 12 * * ?', name: '中午12点自动点赞', fnc: () => this.Scheduled_Like() },
+      { cron: '0 0 14 * * ?', name: '下午2点自动点赞', fnc: () => this.Scheduled_Like() },
+      { cron: '0 0 16 * * ?', name: '下午4点自动点赞', fnc: () => this.Scheduled_Like() },
+      { cron: '0 0 22 * * ?', name: '晚上10点自动点赞', fnc: () => this.Scheduled_Like() },
+      { cron: '0 0 0 * * ?', name: '凌晨0点给H_ID点赞', fnc: () => this.Midnight_Like() }
+    ]
   }
 
   async PZ_Test(e) {
@@ -135,24 +142,25 @@ export class pz extends plugin {
         const msgText = e.raw_message?.trim() || e.message?.map(m => m.text || '').join('').trim();
         
         if (msgText) {
-          // 定义要匹配的指令（支持带#和不带#）
-          const triggerPatterns = [
-            /^#?骗赞$/i,
-            /^#?赞我$/i,
-            /^#?全部赞我$/i
-          ];
+          // 定义要匹配的指令（支持带#和不带#，精确匹配）
+          const cleanMsg = msgText.replace(/^#/, '').trim().toLowerCase();
+          const allowedCommands = ['骗赞', '赞我', '全部赞我'].map(cmd => cmd.toLowerCase());
           
-          // 检查是否匹配任意一个指令模式
-          const isTriggered = triggerPatterns.some(pattern => pattern.test(msgText));
+          // 检查是否匹配任意一个指令
+          const isTriggered = allowedCommands.some(cmd => cleanMsg === cmd);
           
           if (isTriggered) {
             // 检查频率限制
             if (checkRateLimit(e.group_id, e.user_id)) {
               console.log(`[指令复读触发][群${e.group_id}][用户${e.user_id}]: ${msgText}`);
               
+              // 随机1-10次复读
+              const repeatCount = _.random(1, 10);
+              const repeatedMsg = Array(repeatCount).fill(msgText).join('\n');
+              
               // 异步复读消息，不等待完成
               setTimeout(() => {
-                e.reply(msgText, false).catch(err => {
+                e.reply(repeatedMsg, false).catch(err => {
                   logger.error(`[复读失败]: ${err}`);
                 });
               }, 300); // 延迟300ms发送
@@ -226,8 +234,9 @@ export class pz extends plugin {
     return { JNTM, n }
   }
 
-  async Auto_Like() {
-    console.log('[骗赞][自动点赞][开始]')
+  // 定时自动点赞（中午12点、下午2点、下午4点、晚上10点）
+  async Scheduled_Like() {
+    console.log('[骗赞][定时点赞][开始]')
     let bots = [].concat(Bot.uin).map(uin => Bot[uin]).filter(bot => bot && !/^[a-zA-Z]+$/.test(bot.uin))
     for (let bot of bots) {
       if (!Array.from(bot.gl.keys()).map(Number).includes(PZ_ID)) { 
@@ -250,7 +259,51 @@ export class pz extends plugin {
         }
       }
     }
-    console.log('[骗赞][自动点赞][结束]')
+    console.log('[骗赞][定时点赞][结束]')
+  }
+
+  // 凌晨0点给H_ID点赞
+  async Midnight_Like() {
+    console.log('[骗赞][凌晨点赞][开始]')
+    let bots = [].concat(Bot.uin).map(uin => Bot[uin]).filter(bot => bot && !/^[a-zA-Z]+$/.test(bot.uin))
+    
+    // 获取当前配置中的H_ID
+    if (!H_ID) {
+      try {
+        let config = YAML.parse(fs.readFileSync(configPath, 'utf8'))
+        H_ID = config.H_ID
+      } catch (err) {
+        logger.error(`[骗赞][凌晨点赞]读取配置失败: ${err}`)
+        return
+      }
+    }
+    
+    if (!H_ID) {
+      console.log('[骗赞][凌晨点赞]未配置H_ID，跳过')
+      return
+    }
+    
+    for (let bot of bots) {
+      const e = { adapter: bot.adapter, sendLike: bot.sendLike, bot }
+      let key = `PZ&${bot.uin}&${H_ID}`
+      
+      // 检查是否有CD
+      if (await redis.get(key)) {
+        const ttl = await redis.ttl(key)
+        const h = Math.floor(ttl / 3600), m = Math.floor((ttl % 3600) / 60), s = ttl % 60
+        console.log(`[骗赞][凌晨点赞][跳过] ${H_ID} 有CD，剩余: ${h}时${m}分${s}秒`)
+        continue
+      }
+      
+      try {
+        await this.PZ_Res(e, '赞', H_ID, key)
+        console.log(`[骗赞][凌晨点赞][成功] 机器人 ${bot.uin} 给 ${H_ID} 点赞`)
+        await common.sleep(_.sample([1000, 1500, 2000, 2500]))
+      } catch (err) {
+        logger.error(`[骗赞][凌晨点赞][失败] 机器人 ${bot.uin} 给 ${H_ID} 点赞出错: ${err}`)
+      }
+    }
+    console.log('[骗赞][凌晨点赞][结束]')
   }
 
   async PZ_Set(e) {
@@ -303,7 +356,8 @@ export class pz extends plugin {
       '「#填写骗赞」：[填入骗赞群白名单配置.]',
       '「#骗赞恢复」：[删除骗赞群白名单配置.]',
       '「骗赞测试 / #骗赞测试」：[仅骗赞群可用，测试插件核心逻辑.]',
-      '『PS：骗赞群只走骗赞.』'
+      '『PS：骗赞群只走骗赞.』',
+      '『定时任务：中午12点、下午2点、下午4点、晚上10点自动给骗赞群点赞，凌晨0点给配置中的QQ点赞』'
     ].join('\n')
     await this.PZ_Msg(e, msg)
   }
