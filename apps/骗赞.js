@@ -30,7 +30,7 @@ export class pz extends plugin {
 
   async PZ_Test(e) {
     if (Number(e.group_id) !== Number(PZ_ID)) {
-      await this.PZ_Msg(e, '仅骗赞群可使用测试命令', 0)
+      await this.PZ_Msg(e, '❌ 仅骗赞群可使用测试命令', 0)
       return true
     }
     this.Bot = e?.bot ?? Bot
@@ -43,14 +43,14 @@ export class pz extends plugin {
     if (RedisData) {
       const ttl = await redis.ttl(key)
       const h = Math.floor(ttl / 3600), m = Math.floor((ttl % 3600) / 60), s = ttl % 60
-      await this.PZ_Msg(e, `骗赞插件测试成功！\n当前你有骗赞CD，剩余时间：${h}时${m}分${s}秒\n插件核心逻辑正常运行~`, 0)
+      await this.PZ_Msg(e, `✅ 骗赞插件测试成功！\n当前你有骗赞CD，剩余时间：${h}时${m}分${s}秒\n插件核心逻辑正常运行~`, 0)
       return true
     }
 
     let { JNTM, n } = await this.PZ_Res(e, DO, QQ, key)
     const testMsg = n > 0 
-      ? `骗赞插件测试成功！\n已为你点赞${n}下~` 
-      : `骗赞插件测试成功（逻辑正常）！\n${JNTM}`
+      ? `✅ 骗赞插件测试成功！\n已为你点赞${n}下~` 
+      : `✅ 骗赞插件测试成功（逻辑正常）！\n${JNTM}`
     await this.PZ_Msg(e, testMsg, 0)
     return true
   }
@@ -62,7 +62,22 @@ export class pz extends plugin {
     let zt = e?.msg?.includes('状态')
     e.message = []
     
-    // 移除不必要的权限检查，允许所有人使用
+    // 复读消息功能 - 检查是否是配置中的群
+    const isConfigGroup = Number(e.group_id) === Number(PZ_ID) || 
+                         W_GID.includes(Number(e.group_id)) || 
+                         (W_GID.includes('你干嘛~哈哈哎哟~') && W_GID.length === 1);
+    
+    // 如果是配置群，复读用户的消息
+    if (isConfigGroup && e.raw_message) {
+      try {
+        const originalMsg = e.raw_message;
+        await e.reply(originalMsg, false);
+        console.log(`[复读消息][群${e.group_id}][用户${e.user_id}]: ${originalMsg}`);
+      } catch (err) {
+        logger.error(`[复读消息失败]: ${err}`);
+      }
+    }
+    
     if (!e.isMaster && XQ_GID.includes(e.group_id)) {
       return this.PZ_Msg(e, XCY, 0)
     }
@@ -81,7 +96,6 @@ export class pz extends plugin {
     }
     
     let { JNTM, n } = await this.PZ_Res(e, DO, QQ, key)
-    
     
     if (HFKG) {
       let replyMsg = n > 0 
@@ -166,7 +180,6 @@ export class pz extends plugin {
   }
 
   async F_R(e) {
-    
     if (e.isMaster || e.user_id == H_ID) {
       let R = e.msg.match(/骗赞恢复/i)
       const GroupPath = './config/config/group.yaml'
@@ -295,7 +308,7 @@ XCY: 暂时关闭点赞功能.\\n可加骗赞群「805020859」\\n要骗赞带�
 JYHF: 暂时关闭点赞功能.
 HFKH: false`;
     fs.writeFileSync(configPath, zwConfig, 'utf8');
-    logger.mark('[骗赞][配置创建成功]')
+    logger.mark('[骗赞][zw.yaml配置创建成功]')
   }
 });
 
@@ -311,10 +324,25 @@ HFKH: false`;
   }, 1e3)) 
 })()
 
-
+// 配置群中的特殊复读功能
 Bot.on("message.group", e => {
-  if (/^(#全部赞我|#?骗赞)$/.test(e?.message?.[0]?.text)) {
-    const Msg = JSON.parse(JSON.stringify(e.message))
-    new pz().PZ(e)
+  // 检查是否是配置中的群
+  const isConfigGroup = Number(e.group_id) === Number(PZ_ID) || 
+                       W_GID.includes(Number(e.group_id)) || 
+                       (W_GID.includes('你干嘛~哈哈哎哟~') && W_GID.length === 1);
+  
+  if (isConfigGroup) {
+    // 检查消息是否是触发词
+    const triggerWords = ['#骗赞', '#赞我', '#全部赞我', '骗赞', '赞我', '全部赞我'];
+    const msgText = e.raw_message?.trim();
+    
+    if (msgText && triggerWords.some(word => msgText.includes(word))) {
+      console.log(`[配置群复读触发][群${e.group_id}][用户${e.user_id}]: ${msgText}`);
+      
+      // 异步复读消息，不等待完成
+      e.reply(msgText, false).catch(err => {
+        logger.error(`[复读失败]: ${err}`);
+      });
+    }
   }
-})
+});
