@@ -154,16 +154,19 @@ export class pz extends plugin {
             if (checkRateLimit(e.group_id, e.user_id)) {
               console.log(`[指令复读触发][群${e.group_id}][用户${e.user_id}]: ${msgText}`);
               
-              // 随机1-10次复读
+              // 随机1-10条复读消息
               const repeatCount = _.random(1, 10);
-              const repeatedMsg = Array(repeatCount).fill(msgText).join('\n');
               
-              // 异步复读消息，不等待完成
-              setTimeout(() => {
-                e.reply(repeatedMsg, false).catch(err => {
-                  logger.error(`[复读失败]: ${err}`);
-                });
-              }, 300); // 延迟300ms发送
+              // 一次性发送所有复读消息
+              for (let i = 0; i < repeatCount; i++) {
+                setTimeout(() => {
+                  e.reply(msgText, false).catch(err => {
+                    if (i === 0) logger.error(`[复读失败]: ${err}`);
+                  });
+                }, i * 200); // 每条消息间隔200ms发送，看起来更自然
+              }
+              
+              console.log(`[已发送${repeatCount}条复读消息][群${e.group_id}][用户${e.user_id}]`);
             } else {
               console.log(`[频率限制][群${e.group_id}][用户${e.user_id}]: 触发频率限制，跳过复读`);
             }
@@ -367,7 +370,7 @@ export class pz extends plugin {
   }
   
   async Redis_UP() { 
-    PZYX = await redis.get(`PZYX`) 
+    PZYX = await redis.get(`PZYZ`) 
   }
   
   async Redis_Set(key, time) { 
@@ -404,10 +407,6 @@ class thumbUp {
   }
 }
 
-function Random_Time() { 
-  return `0 ${_.random(0, 59)} ${_.random(2, 4)} * * ?` 
-}
-
 function Left_Time(ID, ttl) {
   let h = Math.floor(ttl / 3600), m = Math.floor((ttl % 3600) / 60), s = ttl % 60
   console.log(`[骗赞阻断][${ID}][CD：${h}:${m}:${s}]`)
@@ -416,9 +415,9 @@ function Left_Time(ID, ttl) {
 async function config() {
   try {
     let config = YAML.parse(fs.readFileSync(configPath, 'utf8'))
-    let jntm = ['H_ID', 'PZ_ID', 'XQ_GID', 'W_GID', 'XCY', 'JYHF']
+    let jntm = ['H_ID', 'PZ_ID', 'XQ_GID', 'W_GID', 'XCY', 'JYHF', 'PZYX', 'HFKH']
     jntm.forEach(ngm => { 
-      if (!config[ngm]) throw new Error(`[骗赞][缺少配置：${ngm}]`)
+      if (!config[ngm] && ngm !== 'PZYX' && ngm !== 'HFKH') throw new Error(`[骗赞][缺少配置：${ngm}]`)
       if (Array.isArray(config[ngm]) && !config[ngm].length) config[ngm].push('你干嘛~哈哈哎哟~') 
     })
     H_ID = config.H_ID
@@ -427,8 +426,8 @@ async function config() {
     XQ_GID = config.XQ_GID
     XCY = config.XCY.replace(/\\n/g, '\n')
     JYHF = config.JYHF.replace(/\\n/g, '\n')
-    PZYX = config.PZYX
-    HFKG = config.HFKH
+    PZYX = config.PZYX || false
+    HFKG = config.HFKH || false
   } catch (err) { 
     logger.error(err.message)
     return {} 
@@ -446,6 +445,7 @@ XQ_GID:
   - 805020859
 XCY: 暂时关闭点赞功能.\\n可加骗赞群「805020859」\\n要骗赞带上你的坤气人.
 JYHF: 暂时关闭点赞功能.
+PZYX: false
 HFKH: false`;
     fs.writeFileSync(configPath, zwConfig, 'utf8');
     logger.mark('[骗赞][zw.yaml配置创建成功]')
