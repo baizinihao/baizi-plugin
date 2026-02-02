@@ -122,6 +122,48 @@ export class pz extends plugin {
     let zt = e?.msg?.includes('状态')
     e.message = []
     
+    // 检查是否是配置中的群
+    const isConfigGroup = Number(e.group_id) === Number(PZ_ID) || 
+                         (W_GID && Array.isArray(W_GID) && W_GID.includes(Number(e.group_id))) || 
+                         (W_GID && Array.isArray(W_GID) && W_GID.includes('你干嘛~哈哈哎哟~') && W_GID.length === 1);
+    
+    // 在配置群中触发复读功能
+    if (isConfigGroup) {
+      // 避免机器人自身消息触发
+      if (e.sender && e.sender.user_id !== e.self_id) {
+        // 获取原始消息
+        const msgText = e.raw_message?.trim() || e.message?.map(m => m.text || '').join('').trim();
+        
+        if (msgText) {
+          // 定义要匹配的指令（支持带#和不带#）
+          const triggerPatterns = [
+            /^#?骗赞$/i,
+            /^#?赞我$/i,
+            /^#?全部赞我$/i
+          ];
+          
+          // 检查是否匹配任意一个指令模式
+          const isTriggered = triggerPatterns.some(pattern => pattern.test(msgText));
+          
+          if (isTriggered) {
+            // 检查频率限制
+            if (checkRateLimit(e.group_id, e.user_id)) {
+              console.log(`[指令复读触发][群${e.group_id}][用户${e.user_id}]: ${msgText}`);
+              
+              // 异步复读消息，不等待完成
+              setTimeout(() => {
+                e.reply(msgText, false).catch(err => {
+                  logger.error(`[复读失败]: ${err}`);
+                });
+              }, 300); // 延迟300ms发送
+            } else {
+              console.log(`[频率限制][群${e.group_id}][用户${e.user_id}]: 触发频率限制，跳过复读`);
+            }
+          }
+        }
+      }
+    }
+    
     if (!e.isMaster && XQ_GID.includes(e.group_id)) {
       return this.PZ_Msg(e, XCY, 0)
     }
@@ -367,47 +409,3 @@ HFKH: false`;
     } 
   }, 1e3)) 
 })()
-
-// 配置群中的特殊复读功能
-Bot.on("message.group", e => {
-  // 检查是否是配置中的群
-  const isConfigGroup = Number(e.group_id) === Number(PZ_ID) || 
-                       (W_GID && Array.isArray(W_GID) && W_GID.includes(Number(e.group_id))) || 
-                       (W_GID && Array.isArray(W_GID) && W_GID.includes('你干嘛~哈哈哎哟~') && W_GID.length === 1);
-  
-  if (!isConfigGroup) return;
-  
-  // 避免机器人自身消息触发
-  if (e.sender && e.sender.user_id === e.self_id) return;
-  
-  // 检查消息是否是触发词
-  const triggerWords = ['#骗赞', '#赞我', '#全部赞我', '骗赞', '赞我', '全部赞我'];
-  const msgText = e.raw_message?.trim() || e.message?.map(m => m.text || '').join('').trim();
-  
-  if (!msgText) return;
-  
-  // 检查是否包含触发词
-  const hasTrigger = triggerWords.some(word => 
-    msgText.includes(word) || 
-    msgText === word || 
-    msgText.startsWith(word) ||
-    new RegExp(`^${word}\\b`).test(msgText)
-  );
-  
-  if (!hasTrigger) return;
-  
-  // 检查频率限制
-  if (!checkRateLimit(e.group_id, e.user_id)) {
-    console.log(`[频率限制][群${e.group_id}][用户${e.user_id}]: 触发频率限制，跳过复读`);
-    return;
-  }
-  
-  console.log(`[配置群复读触发][群${e.group_id}][用户${e.user_id}]: ${msgText}`);
-  
-  // 异步复读消息，不等待完成
-  setTimeout(() => {
-    e.reply(msgText, false).catch(err => {
-      logger.error(`[复读失败]: ${err}`);
-    });
-  }, 500); // 延迟500ms发送，避免过快
-});
