@@ -9,6 +9,66 @@ import fs from 'fs'
 let H_ID, PZ_ID, W_GID, XQ_GID, XCY, JYHF, HFKG, PZYX,
 configPath = './plugins/baizi-plugin/apps/config/zw.yaml'
 
+// 频率限制器
+const rateLimiter = new Map();
+const RATE_LIMIT = {
+  maxCount: 10, // 5秒内最多发送10条
+  timeWindow: 5000, // 5秒时间窗口
+  maxPerUser: 3, // 每个用户最多触发3次
+};
+
+// 清理过期记录
+function cleanRateLimit() {
+  const now = Date.now();
+  for (const [key, data] of rateLimiter.entries()) {
+    if (now - data.timestamp > RATE_LIMIT.timeWindow) {
+      rateLimiter.delete(key);
+    }
+  }
+}
+
+// 检查是否超过频率限制
+function checkRateLimit(groupId, userId) {
+  cleanRateLimit();
+  
+  const groupKey = `group_${groupId}`;
+  const userKey = `user_${userId}_${groupId}`;
+  
+  const now = Date.now();
+  
+  // 检查群消息频率
+  if (rateLimiter.has(groupKey)) {
+    const groupData = rateLimiter.get(groupKey);
+    if (now - groupData.timestamp <= RATE_LIMIT.timeWindow) {
+      if (groupData.count >= RATE_LIMIT.maxCount) {
+        return false; // 超过群频率限制
+      }
+      groupData.count += 1;
+    } else {
+      rateLimiter.set(groupKey, { count: 1, timestamp: now });
+    }
+  } else {
+    rateLimiter.set(groupKey, { count: 1, timestamp: now });
+  }
+  
+  // 检查用户频率
+  if (rateLimiter.has(userKey)) {
+    const userData = rateLimiter.get(userKey);
+    if (now - userData.timestamp <= RATE_LIMIT.timeWindow) {
+      if (userData.count >= RATE_LIMIT.maxPerUser) {
+        return false; // 超过用户频率限制
+      }
+      userData.count += 1;
+    } else {
+      rateLimiter.set(userKey, { count: 1, timestamp: now });
+    }
+  } else {
+    rateLimiter.set(userKey, { count: 1, timestamp: now });
+  }
+  
+  return true;
+}
+
 export class pz extends plugin {
   constructor(e) {
     super({
@@ -61,22 +121,6 @@ export class pz extends plugin {
     let QQ = e.at || e.user_id
     let zt = e?.msg?.includes('状态')
     e.message = []
-    
-    // 复读消息功能 - 检查是否是配置中的群
-    const isConfigGroup = Number(e.group_id) === Number(PZ_ID) || 
-                         W_GID.includes(Number(e.group_id)) || 
-                         (W_GID.includes('你干嘛~哈哈哎哟~') && W_GID.length === 1);
-    
-    // 如果是配置群，复读用户的消息
-    if (isConfigGroup && e.raw_message) {
-      try {
-        const originalMsg = e.raw_message;
-        await e.reply(originalMsg, false);
-        console.log(`[复读消息][群${e.group_id}][用户${e.user_id}]: ${originalMsg}`);
-      } catch (err) {
-        logger.error(`[复读消息失败]: ${err}`);
-      }
-    }
     
     if (!e.isMaster && XQ_GID.includes(e.group_id)) {
       return this.PZ_Msg(e, XCY, 0)
@@ -328,21 +372,42 @@ HFKH: false`;
 Bot.on("message.group", e => {
   // 检查是否是配置中的群
   const isConfigGroup = Number(e.group_id) === Number(PZ_ID) || 
-                       W_GID.includes(Number(e.group_id)) || 
-                       (W_GID.includes('你干嘛~哈哈哎哟~') && W_GID.length === 1);
+                       (W_GID && Array.isArray(W_GID) && W_GID.includes(Number(e.group_id))) || 
+                       (W_GID && Array.isArray(W_GID) && W_GID.includes('你干嘛~哈哈哎哟~') && W_GID.length === 1);
   
-  if (isConfigGroup) {
-    // 检查消息是否是触发词
-    const triggerWords = ['#骗赞', '#赞我', '#全部赞我', '骗赞', '赞我', '全部赞我'];
-    const msgText = e.raw_message?.trim();
-    
-    if (msgText && triggerWords.some(word => msgText.includes(word))) {
-      console.log(`[配置群复读触发][群${e.group_id}][用户${e.user_id}]: ${msgText}`);
-      
-      // 异步复读消息，不等待完成
-      e.reply(msgText, false).catch(err => {
-        logger.error(`[复读失败]: ${err}`);
-      });
-    }
+  if (!isConfigGroup) return;
+  
+  // 避免机器人自身消息触发
+  if (e.sender && e.sender.user_id === e.self_id) return;
+  
+  // 检查消息是否是触发词
+  const triggerWords = ['#骗赞', '#赞我', '#全部赞我', '骗赞', '赞我', '全部赞我'];
+  const msgText = e.raw_message?.trim() || e.message?.map(m => m.text || '').join('').trim();
+  
+  if (!msgText) return;
+  
+  // 检查是否包含触发词
+  const hasTrigger = triggerWords.some(word => 
+    msgText.includes(word) || 
+    msgText === word || 
+    msgText.startsWith(word) ||
+    new RegExp(`^${word}\\b`).test(msgText)
+  );
+  
+  if (!hasTrigger) return;
+  
+  // 检查频率限制
+  if (!checkRateLimit(e.group_id, e.user_id)) {
+    console.log(`[频率限制][群${e.group_id}][用户${e.user_id}]: 触发频率限制，跳过复读`);
+    return;
   }
+  
+  console.log(`[配置群复读触发][群${e.group_id}][用户${e.user_id}]: ${msgText}`);
+  
+  // 异步复读消息，不等待完成
+  setTimeout(() => {
+    e.reply(msgText, false).catch(err => {
+      logger.error(`[复读失败]: ${err}`);
+    });
+  }, 500); // 延迟500ms发送，避免过快
 });
