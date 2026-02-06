@@ -1,26 +1,53 @@
 import axios from 'axios'
 
 export async function main(e) {
-    if (!/^#?国际服任务$/.test(e.msg)) return
+    console.log('【光遇插件】检测到消息：', e.msg);
+    // 匹配指令：带/不带井号，允许前后无空格
+    const reg = /^\s*#?国际服任务\s*$/;
+    if (!reg.test(e.msg)) {
+        console.log('【光遇插件】指令不匹配，跳过');
+        return;
+    }
     try {
+        console.log('【光遇插件】开始请求接口...');
         const res = await axios.get('http://baizihaoxiao.xin/API/sky5.php', {
             timeout: 10000,
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36' }
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+            },
+            // 若服务器需要代理，解开下面注释并配置代理
+            // proxy: {
+            //     host: '127.0.0.1',
+            //     port: 7890
+            // }
         })
-        const data = res.data
-        if (data.status !== 'success') return e.reply(`获取失败：${data.message || '接口异常'}`, true)
-        const forwardMsg = []
-        forwardMsg.push({ type: 'text', text: `id: ${data.data.id}` })
-        if (data.data.images && data.data.images.length > 0) {
-            data.data.images.forEach(img => forwardMsg.push({ type: 'image', url: img }))
+        console.log('【光遇插件】接口返回数据：', res.data);
+        const data = res.data;
+        if (data.status !== 'success') {
+            const errMsg = `获取失败：${data.message || '接口返回异常'}`;
+            console.log('【光遇插件】接口返回错误：', errMsg);
+            return e.reply(errMsg, true);
         }
-        await e.reply(forwardMsg, { forward: true })
+        // 构造转发卡片：第一行id，后续按顺序放图片
+        const forwardMsg = [{ type: 'text', text: `id: ${data.data.id}` }];
+        if (data.data.images && data.data.images.length > 0) {
+            data.data.images.forEach(img => forwardMsg.push({ type: 'image', url: img }));
+        }
+        console.log('【光遇插件】准备发送转发卡片，内容：', forwardMsg);
+        await e.reply(forwardMsg, { forward: true });
     } catch (err) {
-        e.reply(`获取失败：${err.message || '网络/接口无响应'}`, true)
+        const errMsg = `获取失败：${err.message || '网络异常/接口无响应'}`;
+        console.log('【光遇插件】执行报错：', err);
+        e.reply(errMsg, true);
     }
 }
 
 export default {
     main,
-    rule: [{ reg: /^#?国际服任务$/, fnc: 'main' }]
+    rule: [
+        {
+            reg: /^\s*#?国际服任务\s*$/,
+            fnc: 'main'
+        }
+    ]
 }
