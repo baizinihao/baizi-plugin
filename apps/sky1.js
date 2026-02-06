@@ -1,5 +1,9 @@
 import plugin from '../../../lib/plugins/plugin.js';
 import { segment } from 'oicq';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const curl = promisify(exec);
 
 export default class SkyInternationalTask extends plugin {
   constructor() {
@@ -19,17 +23,14 @@ export default class SkyInternationalTask extends plugin {
 
   async showInternationalTask(e) {
     try {
-      // 实时请求接口，和你光遇叫声插件请求逻辑一致
-      const res = await fetch('http://baizihaoxiao.xin/API/sky5.php', {
-        timeout: 15000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-          'Accept': 'application/json, text/plain, */*'
-        }
-      });
+      // 用curl请求接口，加浏览器请求头，超时15秒，和终端请求完全一致
+      const curlCmd = `curl -s --max-time 15 -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" -H "Accept: application/json, text/plain, */*" http://baizihaoxiao.xin/API/sky5.php`;
+      const { stdout, stderr } = await curl(curlCmd);
 
-      if (!res.ok) throw new Error(`接口响应失败：${res.status}`);
-      const data = await res.json();
+      // 处理curl错误
+      if (stderr) throw new Error(`curl请求错误：${stderr}`);
+      // 解析接口返回的JSON数据
+      const data = JSON.parse(stdout);
       if (data.status !== 'success' || !data.data) throw new Error('接口返回数据异常');
 
       // 清洗文本，适配QQ聊天换行，移除无效字符
@@ -37,7 +38,7 @@ export default class SkyInternationalTask extends plugin {
       const content = text.replace(/\n/g, '\r').replace(/​/g, '').trim();
       const msgList = [content, `\r📅更新时间：${time}`, `\r📌数据来源：${source}`];
 
-      // 严格按接口顺序添加图片，和你要求一致
+      // 严格按接口images顺序添加图片
       images.forEach(imgUrl => msgList.push(segment.image(imgUrl)));
 
       // 构造QQ原生转发聊天记录卡片，适配群聊/私聊
@@ -52,7 +53,6 @@ export default class SkyInternationalTask extends plugin {
       await e.reply(forwardCard);
 
     } catch (err) {
-      // 和你光遇叫声插件一致的日志方式
       logger.error(`[光遇国际服任务] 查询失败：`, err);
       await e.reply('光遇国际服任务查询失败，请稍后重试~');
     }
