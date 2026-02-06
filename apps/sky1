@@ -1,5 +1,6 @@
+import plugin from '../../../../lib/plugin.js';
 import { segment } from 'oicq';
-import { getLinkData } from '../../lib/tools.js';
+import { getLinkData } from '../../../../lib/tools.js';
 
 export class SkyInternationalTaskPlugin extends plugin {
     constructor() {
@@ -7,7 +8,7 @@ export class SkyInternationalTaskPlugin extends plugin {
             name: '[Ts]光遇国际服任务',
             dsc: '光遇国际服每日任务查询，转发卡片样式',
             event: 'message',
-            priority: 1,
+            priority: 10,
             rule: [
                 { reg: /^[#\/]?国际服任务$/i, fnc: 'showInternationalTask' }
             ]
@@ -20,19 +21,20 @@ export class SkyInternationalTaskPlugin extends plugin {
             if (res.status !== 'success') return e.reply('光遇国际服任务数据获取失败');
             
             const { text, time, source, images } = res.data;
-            const taskText = text.replace(/\n/g, '\r').replace(/​/g, '').trim();
-            const msgContent = [taskText, `\r📅更新时间：${time}`, `\r📌数据来源：${source}`];
+            const content = text.replace(/\n/g, '\r').replace(/​/g, '').trim();
+            const msgList = [content, `\r📅更新时间：${time}`, `\r📌数据来源：${source}`];
             
-            images.forEach(img => msgContent.push(segment.image(img)));
+            images.forEach(imgUrl => msgList.push(segment.image(imgUrl)));
 
-            const forwardMsg = [
+            const forwardData = [
                 {
                     sender: { nickname: '光遇国际服任务Bot', user_id: 2854196306 },
-                    content: msgContent
+                    time: new Date().getTime(),
+                    content: msgList
                 }
             ];
 
-            const forwardCard = segment.forward(e.user_id, forwardMsg);
+            const forwardCard = segment.forward(e.isGroup ? e.group_id : e.user_id, forwardData);
             return e.reply(forwardCard);
         } catch (error) {
             return e.reply('光遇国际服任务查询异常，请稍后再试');
