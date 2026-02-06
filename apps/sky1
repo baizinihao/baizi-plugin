@@ -1,104 +1,41 @@
-import plugin from '../../../lib/plugins/plugin.js';
 import { segment } from 'oicq';
+import { getLinkData } from '../../lib/tools.js';
 
-// 配置
-const CONFIG = {
-  taskApiUrl: 'http://baizihaoxiao.xin/API/sky5.php' // 您提供的接口
-};
+export class SkyInternationalTaskPlugin extends plugin {
+    constructor() {
+        super({
+            name: '[Ts]光遇国际服任务',
+            dsc: '光遇国际服每日任务查询，转发卡片样式',
+            event: 'message',
+            priority: 1,
+            rule: [
+                { reg: /^[#\/]?国际服任务$/i, fnc: 'showInternationalTask' }
+            ]
+        });
+    }
 
-export default class SkyTaskCard extends plugin {
-  constructor() {
-    super({
-      name: '光遇国际服任务卡片',
-      dsc: '从接口获取光遇国际服任务信息并以卡片形式展示',
-      event: 'message',
-      priority: 5000,
-      rule: [
-        {
-          // 灵活匹配指令：允许前后空格，可带可不带#号
-          reg: '^\\s*#?国际服任务\\s*$',
-          fnc: 'sendTaskCard'
+    async showInternationalTask(e) {
+        try {
+            const res = await getLinkData('http://baizihaoxiao.xin/API/sky5.php', 'json');
+            if (res.status !== 'success') return e.reply('光遇国际服任务数据获取失败');
+            
+            const { text, time, source, images } = res.data;
+            const taskText = text.replace(/\n/g, '\r').replace(/​/g, '').trim();
+            const msgContent = [taskText, `\r📅更新时间：${time}`, `\r📌数据来源：${source}`];
+            
+            images.forEach(img => msgContent.push(segment.image(img)));
+
+            const forwardMsg = [
+                {
+                    sender: { nickname: '光遇国际服任务Bot', user_id: 2854196306 },
+                    content: msgContent
+                }
+            ];
+
+            const forwardCard = segment.forward(e.user_id, forwardMsg);
+            return e.reply(forwardCard);
+        } catch (error) {
+            return e.reply('光遇国际服任务查询异常，请稍后再试');
         }
-      ]
-    });
-  }
-
-  async sendTaskCard(e) {
-    try {
-      logger.info(`[光遇任务卡片] 用户 ${e.user_id} 触发指令`);
-      
-      // 1. 从接口获取数据
-      const apiData = await this.fetchTaskData();
-      if (!apiData) {
-        await e.reply('获取任务数据失败，请稍后重试。');
-        return;
-      }
-
-      // 2. 构建卡片消息
-      const cardMessage = this.buildCardMessage(apiData);
-      
-      // 3. 发送回复
-      await e.reply(cardMessage);
-      logger.info('[光遇任务卡片] 消息发送成功');
-      
-    } catch (error) {
-      logger.error('[光遇任务卡片] 处理失败:', error);
-      await e.reply('生成任务卡片时出错，请检查日志或稍后重试。');
     }
-  }
-
-  // 从接口获取数据
-  async fetchTaskData() {
-    try {
-      const response = await fetch(CONFIG.taskApiUrl, { 
-        timeout: 10000 // 10秒超时
-      });
-      
-      if (!response.ok) {
-        throw new Error(`接口请求失败: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      // 检查接口返回状态
-      if (result.status !== 'success') {
-        throw new Error('接口返回状态异常');
-      }
-      
-      logger.info(`[光遇任务卡片] 成功获取数据，ID: ${result.data.id}`);
-      return result.data;
-      
-    } catch (error) {
-      logger.error('[光遇任务卡片] 获取接口数据失败:', error);
-      return null;
-    }
-  }
-
-  // 构建卡片消息
-  buildCardMessage(data) {
-    const messages = [];
-    
-    // 第一部分：ID (第一行)
-    messages.push(segment.text(`id: ${data.id}\n`));
-    
-    // 第二部分：文本内容
-    if (data.text) {
-      messages.push(segment.text(`${data.text}\n`));
-    }
-    
-    // 第三部分：三张图片 (按接口返回的顺序)
-    if (data.images && Array.isArray(data.images)) {
-      // 遍历并添加每张图片
-      data.images.forEach((imageUrl, index) => {
-        // 确保URL格式正确 (接口返回的URL中有转义符，需要处理)
-        const cleanUrl = imageUrl.replace(/\\\//g, '/');
-        logger.info(`[光遇任务卡片] 添加图片 ${index + 1}: ${cleanUrl}`);
-        messages.push(segment.image(cleanUrl));
-      });
-    } else {
-      logger.warn('[光遇任务卡片] 接口未返回图片数据');
-    }
-    
-    return messages;
-  }
 }
