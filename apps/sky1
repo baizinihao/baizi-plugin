@@ -1,53 +1,48 @@
-import axios from 'axios'
+import plugin from '../../../lib/plugins/plugin.js';
+import { logger } from '../../../lib/logger.js';
+import segment from '../../../lib/segment.js';
 
-export async function main(e) {
-    console.log('【光遇插件】检测到消息：', e.msg);
-    // 匹配指令：带/不带井号，允许前后无空格
-    const reg = /^\s*#?国际服任务\s*$/;
-    if (!reg.test(e.msg)) {
-        console.log('【光遇插件】指令不匹配，跳过');
-        return;
-    }
-    try {
-        console.log('【光遇插件】开始请求接口...');
-        const res = await axios.get('http://baizihaoxiao.xin/API/sky5.php', {
-            timeout: 10000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-            },
-            // 若服务器需要代理，解开下面注释并配置代理
-            // proxy: {
-            //     host: '127.0.0.1',
-            //     port: 7890
-            // }
-        })
-        console.log('【光遇插件】接口返回数据：', res.data);
-        const data = res.data;
-        if (data.status !== 'success') {
-            const errMsg = `获取失败：${data.message || '接口返回异常'}`;
-            console.log('【光遇插件】接口返回错误：', errMsg);
-            return e.reply(errMsg, true);
-        }
-        // 构造转发卡片：第一行id，后续按顺序放图片
-        const forwardMsg = [{ type: 'text', text: `id: ${data.data.id}` }];
-        if (data.data.images && data.data.images.length > 0) {
-            data.data.images.forEach(img => forwardMsg.push({ type: 'image', url: img }));
-        }
-        console.log('【光遇插件】准备发送转发卡片，内容：', forwardMsg);
-        await e.reply(forwardMsg, { forward: true });
-    } catch (err) {
-        const errMsg = `获取失败：${err.message || '网络异常/接口无响应'}`;
-        console.log('【光遇插件】执行报错：', err);
-        e.reply(errMsg, true);
-    }
-}
+const CONFIG = {
+  skyGuojiUrl: 'http://baizihaoxiao.xin/API/sky5.php'
+};
 
-export default {
-    main,
-    rule: [
+export default class SkyGuojiTask extends plugin {
+  constructor() {
+    super({
+      name: '光遇国际服任务',
+      dsc: '获取光遇国际服每日任务，返回转发卡片',
+      event: 'message',
+      priority: 5000,
+      rule: [
         {
-            reg: /^\s*#?国际服任务\s*$/,
-            fnc: 'main'
+          reg: /^#?国际服任务$/,
+          fnc: 'sendSkyGuojiTask'
         }
-    ]
+      ]
+    });
+  }
+
+  async sendSkyGuojiTask(e) {
+    try {
+      const res = await fetch(CONFIG.skyGuojiUrl, { timeout: 15000 });
+      if (!res.ok) throw new Error(`接口请求失败，状态码：${res.status}`);
+      
+      const data = await res.json();
+      if (data.status !== 'success') throw new Error(data.message || '接口返回异常');
+      
+      const forwardMsg = [];
+      forwardMsg.push(segment.text(`id: ${data.data.id}`));
+      
+      if (data.data.images && Array.isArray(data.data.images) && data.data.images.length > 0) {
+        data.data.images.forEach(imgUrl => {
+          forwardMsg.push(segment.image(imgUrl));
+        });
+      }
+      
+      await e.reply(forwardMsg, { forward: true });
+    } catch (err) {
+      logger.error(`[光遇国际服任务] 执行失败：${err.message}`);
+      await e.reply(`光遇国际服任务获取失败：${err.message}`);
+    }
+  }
 }
