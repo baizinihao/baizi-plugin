@@ -1,6 +1,4 @@
-import plugin from '../../../../lib/plugin.js';
 import { segment } from 'oicq';
-import { getLinkData } from '../../../../lib/tools.js';
 
 export class SkyInternationalTaskPlugin extends plugin {
     constructor() {
@@ -17,7 +15,8 @@ export class SkyInternationalTaskPlugin extends plugin {
 
     async showInternationalTask(e) {
         try {
-            const res = await getLinkData('http://baizihaoxiao.xin/API/sky5.php', 'json');
+            const response = await fetch('http://baizihaoxiao.xin/API/sky5.php');
+            const res = await response.json();
             if (res.status !== 'success') return e.reply('光遇国际服任务数据获取失败');
             
             const { text, time, source, images } = res.data;
