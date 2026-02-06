@@ -28,23 +28,12 @@ export class SkyInternationalTask extends plugin {
             const cleanText = text.replace(/\n/g, '\r').replace(/​/g, '').replace(/\\\//g, '/').trim();
             const fullText = `【sky助手】光遇国际服每日任务\r\r${cleanText}\r\r📅更新时间：${time}\r©️来源：${source}\r🔗 接口支持：baizihaoxiao.xin`;
 
-            // 构造转发节点，指定发送者昵称为sky助手
-            const forwardNodes = [
-                {
-                    user_id: 80000000,
-                    nickname: "sky助手",
-                    message: [{ type: 'text', data: { text: fullText } }]
-                }
-            ];
+            let MsgList = [fullText];
             images.forEach(imgUrl => {
-                forwardNodes.push({
-                    user_id: 80000000,
-                    nickname: "sky助手",
-                    message: [{ type: 'image', data: { file: imgUrl.replace(/\\\//g, '/') } }]
-                });
+                MsgList.push({ type: 'image', data: { file: imgUrl.replace(/\\\//g, '/') } });
             });
 
-            const forwardMsg = await common.makeForwardMsg(e, forwardNodes, '光遇国际服每日任务');
+            const forwardMsg = await common.makeForwardMsg(e, MsgList, '光遇国际服每日任务');
             await e.reply(forwardMsg);
             return true;
         } catch {
