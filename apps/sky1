@@ -1,38 +1,26 @@
 import axios from 'axios'
 
 export async function main(e) {
-    if (!/^#光遇国际服(任务|每日任务)$/i.test(e.msg)) return
+    if (!/^#?国际服任务$/.test(e.msg)) return
     try {
         const res = await axios.get('http://baizihaoxiao.xin/API/sky5.php', {
             timeout: 10000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-            }
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36' }
         })
         const data = res.data
-        if (data.status !== 'success') {
-            e.reply(`获取失败：${data.message || '接口返回异常'}`, true)
-            return
-        }
-        let replyText = `【光遇国际服每日任务】\n${data.data.text || '暂无任务内容'}`
-        e.reply(replyText, true)
+        if (data.status !== 'success') return e.reply(`获取失败：${data.message || '接口异常'}`, true)
+        const forwardMsg = []
+        forwardMsg.push({ type: 'text', text: `id: ${data.data.id}` })
         if (data.data.images && data.data.images.length > 0) {
-            for (const img of data.data.images) {
-                await e.reply(img, true)
-                await new Promise(resolve => setTimeout(resolve, 500))
-            }
+            data.data.images.forEach(img => forwardMsg.push({ type: 'image', url: img }))
         }
+        await e.reply(forwardMsg, { forward: true })
     } catch (err) {
-        e.reply(`获取光遇国际服任务失败：${err.message || '网络异常/接口无响应'}`, true)
+        e.reply(`获取失败：${err.message || '网络/接口无响应'}`, true)
     }
 }
 
 export default {
     main,
-    rule: [
-        {
-            reg: /^#光遇国际服(任务|每日任务)$/i,
-            fnc: 'main'
-        }
-    ]
+    rule: [{ reg: /^#?国际服任务$/, fnc: 'main' }]
 }
