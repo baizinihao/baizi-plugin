@@ -25,7 +25,7 @@ export class SkyInternationalTask extends plugin {
 
             const { text, time, source, images } = taskRes.data;
             const cleanText = text.replace(/\n/g, '\r').replace(/​/g, '').replace(/\\\//g, '/').trim();
-            const fullText = `【sky助手】光遇国际服每日任务\r\r${cleanText}\r\r📅 更新时间：${time}\r©️ 来源：${source}`;
+            const fullText = `【sky助手】光遇国际服每日任务\r\r${cleanText}\r\r📅 更新时间：${time}\r📌 来源：${source}\r🔗 接口支持：baizihaoxiao.xin`;
 
             const msgArray = [{ type: 'text', data: { text: fullText } }];
             images.forEach(imgUrl => msgArray.push({ type: 'image', data: { file: imgUrl.replace(/\\\//g, '/') } }));
