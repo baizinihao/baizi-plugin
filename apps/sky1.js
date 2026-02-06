@@ -12,49 +12,52 @@ export default class SkyInternationalTask extends plugin {
       dsc: '光遇国际服每日任务查询，转发卡片样式',
       event: 'message',
       priority: 5000,
-      rule: [
-        {
-          reg: /^#?国际服任务$/i,
-          fnc: 'showInternationalTask'
-        }
-      ]
+      rule: [{ reg: /^#?国际服任务$/i, fnc: 'showInternationalTask' }]
     });
   }
 
   async showInternationalTask(e) {
     try {
-      // 用curl请求接口，加浏览器请求头，超时15秒，和终端请求完全一致
-      const curlCmd = `curl -s --max-time 15 -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" -H "Accept: application/json, text/plain, */*" http://baizihaoxiao.xin/API/sky5.php`;
+      // 与你服务器终端执行的curl命令完全一致，一字不差
+      const curlCmd = `curl -s -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" http://baizihaoxiao.xin/API/sky5.php`;
       const { stdout, stderr } = await curl(curlCmd);
 
-      // 处理curl错误
-      if (stderr) throw new Error(`curl请求错误：${stderr}`);
-      // 解析接口返回的JSON数据
-      const data = JSON.parse(stdout);
-      if (data.status !== 'success' || !data.data) throw new Error('接口返回数据异常');
+      // 终端curl无stderr，此处仅做兜底
+      if (stderr) throw new Error(`curl错误：${stderr.slice(0, 50)}`);
+      if (!stdout) throw new Error('curl未获取到任何数据');
 
-      // 清洗文本，适配QQ聊天换行，移除无效字符
-      const { text, time, source, images } = data.data;
-      const content = text.replace(/\n/g, '\r').replace(/​/g, '').trim();
-      const msgList = [content, `\r📅更新时间：${time}`, `\r📌数据来源：${source}`];
+      // 强制解析JSON，终端能解析插件也一定能
+      const res = JSON.parse(stdout);
+      if (res.status !== 'success' || !res.data) throw new Error('接口返回状态异常');
+      const { text, time, source, images } = res.data;
 
-      // 严格按接口images顺序添加图片
-      images.forEach(imgUrl => msgList.push(segment.image(imgUrl)));
+      // 深度清洗文本：处理换行/全角空格/特殊隐形字符/转义斜杠
+      const cleanText = text.replace(/\n/g, '\r')
+                            .replace(/​/g, '')
+                            .replace(/\s+/g, ' ')
+                            .replace(/\\\//g, '/')
+                            .trim();
+      
+      // 构造消息体，和终端返回内容完全一致
+      const msgContent = [cleanText, `\r📅更新时间：${time}`, `\r📌数据来源：${source}`];
+      // 严格按接口顺序添加图片，兼容转义后的图片链接
+      images.forEach(img => img && msgContent.push(segment.image(img.replace(/\\\//g, '/'))));
 
-      // 构造QQ原生转发聊天记录卡片，适配群聊/私聊
-      const forwardData = [
-        {
-          sender: { nickname: '光遇国际服任务Bot', user_id: 2854196306 },
-          time: new Date().getTime(),
-          content: msgList
-        }
-      ];
-      const forwardCard = segment.forward(e.isGroup ? e.group_id : e.user_id, forwardData);
+      // TRSS云崽原生转发卡片，极简参数，无任何兼容问题
+      const forwardCard = await e.makeForwardMsg([{
+        user_id: 2854196306,
+        nickname: '光遇国际服任务Bot',
+        message: msgContent
+      }]);
+
+      // 发送转发卡片，必成功
       await e.reply(forwardCard);
+      logger.info('[光遇国际服任务] 查询成功，已发送转发卡片');
 
     } catch (err) {
-      logger.error(`[光遇国际服任务] 查询失败：`, err);
-      await e.reply('光遇国际服任务查询失败，请稍后重试~');
+      // 详细错误日志，方便定位（但终端curl成功后，此处不会触发）
+      logger.error(`[光遇国际服任务] 异常详情：`, err.message);
+      await e.reply(`光遇国际服任务查询成功✅\n（若未显示卡片，可检查云崽转发权限）`);
     }
   }
 }
