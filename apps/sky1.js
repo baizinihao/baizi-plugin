@@ -1,5 +1,5 @@
 import plugin from '../../../lib/plugins/plugin.js';
-import common from '../../../lib/common/common.js'; // 重新导入common模块
+import common from '../../../lib/common/common.js';
 import { segment } from 'oicq';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -10,7 +10,7 @@ export class SkyInternationalTask extends plugin {
     constructor() {
         super({
             name: '光遇国际服任务',
-            dsc: '光遇国际服每日任务查询（自定义头像+昵称）',
+            dsc: '光遇国际服每日任务查询（适配Napcat）',
             event: 'message',
             priority: 2000,
             rule: [
@@ -25,15 +25,7 @@ export class SkyInternationalTask extends plugin {
     async showInternationalTask() {
         let e = this.e;
         try {
-            // 1. 请求头像接口：获取sky助手的头像链接
-            const avatarCmd = `curl -s http://baizihaoxiao.xin/API/qqap.php?qq=3812808525`;
-            const { stdout: avatarStdout } = await curl(avatarCmd);
-            const avatarRes = JSON.parse(avatarStdout);
-            if (avatarRes.code !== 0) throw new Error("头像获取失败");
-            const skyAvatarUrl = avatarRes.data;
-
-
-            // 2. 请求光遇任务接口：获取最新数据
+            // 1. 请求光遇任务接口
             const taskCmd = `curl -s -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" http://baizihaoxiao.xin/API/sky5.php`;
             const { stdout: taskStdout } = await curl(taskCmd);
             const taskRes = JSON.parse(taskStdout);
@@ -41,38 +33,45 @@ export class SkyInternationalTask extends plugin {
             const { text, time, source, images } = taskRes.data;
 
 
-            // 3. 清洗文本+合并为紧凑块（无空格）
+            // 2. 清洗文本+构造标准消息段（text类型）
             const cleanText = text.replace(/\n/g, '\r')
                                   .replace(/​/g, '')
                                   .replace(/\\\//g, '/')
                                   .trim();
-            const mainContent = [
+            const textContent = [
                 cleanText,
                 `📅 数据更新时间：${time}`,
                 `📌 数据来源：${source}`
             ].join('\r');
+            // 标准文本消息段
+            const textSegment = segment.text(textContent);
 
 
-            // 4. 构造消息列表（每个消息块指定发送者：sky助手+自定义头像）
-            let MsgList = [
+            // 3. 构造图片消息段（image类型）
+            const imageSegments = images.map(imgUrl => segment.image(imgUrl.replace(/\\\//g, '/')));
+
+
+            // 4. 构造合并转发节点（严格符合OneBot规范）
+            // 注意：OneBot合并转发的头像由uin决定，这里用3812808525（对应你指定的QQ），头像会自动匹配
+            const forwardNodes = [
                 {
-                    nickname: "sky助手",
-                    avatar: skyAvatarUrl,
-                    content: mainContent
+                    user_id: 3812808525,  // 必须填QQ号（uin），决定头像
+                    nickname: "sky助手",   // 显示的昵称
+                    message: [textSegment] // 消息段数组
                 }
             ];
-            // 按顺序添加图片（同发送者信息）
-            images.forEach(imgUrl => {
-                MsgList.push({
+            // 添加图片节点（同uin+昵称）
+            imageSegments.forEach(imgSeg => {
+                forwardNodes.push({
+                    user_id: 3812808525,
                     nickname: "sky助手",
-                    avatar: skyAvatarUrl,
-                    content: segment.image(imgUrl.replace(/\\\//g, '/'))
+                    message: [imgSeg]
                 });
             });
 
 
-            // 5. 用common.makeForwardMsg生成转发卡片（你环境中验证可行的方法）
-            const forwardMsg = await common.makeForwardMsg(e, MsgList, "光遇国际服每日任务");
+            // 5. 生成并发送合并转发（适配Napcat）
+            const forwardMsg = await common.makeForwardMsg(e, forwardNodes, "光遇国际服每日任务");
             e.reply(forwardMsg);
             return true;
 
