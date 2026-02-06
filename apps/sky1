@@ -1,9 +1,8 @@
 import plugin from '../../../lib/plugins/plugin.js';
+import { segment } from 'oicq';
 
 const CONFIG = {
-  // 国际服任务API接口
   taskApiUrl: 'http://baizihaoxiao.xin/API/sky_task.php',
-  // 默认示例数据（如果API不可用时使用）
   defaultData: {
     id: 5263355163706260,
     images: [
@@ -28,35 +27,40 @@ export default class SkyTaskCard extends plugin {
         }
       ]
     });
+    
+    // 添加加载日志
+    console.log('[光遇任务卡片] 插件加载成功');
   }
 
   async sendTaskCard(e) {
+    console.log('[光遇任务卡片] 收到消息:', e.msg);
+    console.log('[光遇任务卡片] 消息类型:', e.message_type);
+    console.log('[光遇任务卡片] 用户ID:', e.user_id);
+    
     try {
-      // 发送请求获取任务数据
-      let taskData;
-      
-      try {
-        const res = await fetch(CONFIG.taskApiUrl, { timeout: 15000 });
-        if (res.ok) {
-          const result = await res.json();
-          taskData = result.data;
-        } else {
-          logger.warn(`[光遇任务卡片] API请求失败，使用默认数据`);
-          taskData = CONFIG.defaultData;
+      // 使用示例数据直接测试
+      const exampleData = {
+        "status": "success",
+        "data": {
+          "id": 5263355163706260,
+          "text": "#光遇国际服[超话]#\n🐴国际服2.6🐴\n🎉每日任务\n🎉季节蜡烛位置\n🎉大蜡烛位置 ​\n\n🎉织光季开启！（1.16~4.3）\n🏅凯旋锦标赛开启！（1.30~2.13）\n货币位置详见http://t.cn/AXqu5alC\n今日黑石位置：云野三塔图/鲤鱼池（具体位置待补）\n(时间：18:18-22:10 02:18-06:10 10:18-14:10）\n二月 ​​​",
+          "images": [
+            "http://baizihaoxiao.xin/data/光遇/sky1.png",
+            "http://baizihaoxiao.xin/data/光遇/sky2.png",
+            "http://baizihaoxiao.xin/data/光遇/sky3.png"
+          ]
         }
-      } catch (apiErr) {
-        logger.error(`[光遇任务卡片] API调用失败：`, apiErr);
-        taskData = CONFIG.defaultData;
-      }
-
-      // 构建转发卡片消息
-      const cardMessage = await this.buildCardMessage(taskData);
+      };
       
-      // 发送卡片消息
+      console.log('[光遇任务卡片] 开始构建消息');
+      const cardMessage = await this.buildCardMessage(exampleData.data);
+      
+      console.log('[光遇任务卡片] 准备发送消息');
       await e.reply(cardMessage);
+      console.log('[光遇任务卡片] 消息发送成功');
       
     } catch (err) {
-      logger.error(`[光遇任务卡片] 生成失败：`, err);
+      console.error('[光遇任务卡片] 生成失败：', err);
       await e.reply('生成光遇国际服任务卡片失败，请稍后重试~');
     }
   }
@@ -67,13 +71,18 @@ export default class SkyTaskCard extends plugin {
     // 第一行：ID信息
     messages.push(segment.text(`id: ${data.id}`));
     
-    // 添加三张图片（按顺序）
+    // 添加三张图片
     if (data.images && Array.isArray(data.images)) {
-      for (const imgUrl of data.images) {
+      console.log('[光遇任务卡片] 图片数量:', data.images.length);
+      for (let i = 0; i < data.images.length; i++) {
+        const imgUrl = data.images[i];
+        console.log(`[光遇任务卡片] 图片${i+1}:`, imgUrl);
         if (imgUrl && typeof imgUrl === 'string') {
           messages.push(segment.image(imgUrl));
         }
       }
+    } else {
+      console.log('[光遇任务卡片] 没有找到图片数据');
     }
     
     return messages;
