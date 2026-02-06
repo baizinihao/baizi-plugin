@@ -1,90 +1,93 @@
 import plugin from '../../../lib/plugins/plugin.js';
 import { segment } from 'oicq';
 
-const CONFIG = {
-  taskApiUrl: 'http://baizihaoxiao.xin/API/sky_task.php',
-  defaultData: {
-    id: 5263355163706260,
-    images: [
-      "http://baizihaoxiao.xin/data/光遇/sky1.png",
-      "http://baizihaoxiao.xin/data/光遇/sky2.png", 
-      "http://baizihaoxiao.xin/data/光遇/sky3.png"
-    ]
+export default class SkyTaskCard extends plugin {
+  constructor() {
+    super({
+      name: '光遇测试',
+      dsc: '测试指令',
+      event: 'message',
+      priority: 1,
+      rule: [
+        {
+          reg: '^#?国际服任务$',
+          fnc: 'testCommand'
+        },
+        {
+          reg: '^#?测试$',
+          fnc: 'testCommand'
+        }
+      ]
+    });
+    console.log('光遇插件加载成功！');
   }
-};
+
+  async testCommand(e) {
+    console.log('收到指令:', e.msg);
+    
+    // 直接回复文本测试
+    await e.reply('收到指令！正在生成卡片...');
+    
+    // 测试图片
+    try {
+      const messages = [
+        segment.text('id: 5263355163706260\n'),
+        segment.image('http://baizihaoxiao.xin/data/光遇/sky1.png'),
+        segment.image('http://baizihaoxiao.xin/data/光遇/sky2.png'),
+        segment.image('http://baizihaoxiao.xin/data/光遇/sky3.png')
+      ];
+      
+      await e.reply(messages);
+      console.log('消息发送完成');
+    } catch (err) {
+      console.error('发送失败:', err);
+      await e.reply('发送失败：' + err.message);
+    }
+  }
+}import plugin from '../../../lib/plugins/plugin.js';
+import { segment } from 'oicq';
 
 export default class SkyTaskCard extends plugin {
   constructor() {
     super({
-      name: '光遇国际服任务卡片',
-      dsc: '获取光遇国际服任务信息并以卡片形式展示',
+      name: '光遇测试',
+      dsc: '测试指令',
       event: 'message',
-      priority: 5000,
+      priority: 1,
       rule: [
         {
           reg: '^#?国际服任务$',
-          fnc: 'sendTaskCard'
+          fnc: 'testCommand'
+        },
+        {
+          reg: '^#?测试$',
+          fnc: 'testCommand'
         }
       ]
     });
-    
-    // 添加加载日志
-    console.log('[光遇任务卡片] 插件加载成功');
+    console.log('光遇插件加载成功！');
   }
 
-  async sendTaskCard(e) {
-    console.log('[光遇任务卡片] 收到消息:', e.msg);
-    console.log('[光遇任务卡片] 消息类型:', e.message_type);
-    console.log('[光遇任务卡片] 用户ID:', e.user_id);
+  async testCommand(e) {
+    console.log('收到指令:', e.msg);
     
+    // 直接回复文本测试
+    await e.reply('收到指令！正在生成卡片...');
+    
+    // 测试图片
     try {
-      // 使用示例数据直接测试
-      const exampleData = {
-        "status": "success",
-        "data": {
-          "id": 5263355163706260,
-          "text": "#光遇国际服[超话]#\n🐴国际服2.6🐴\n🎉每日任务\n🎉季节蜡烛位置\n🎉大蜡烛位置 ​\n\n🎉织光季开启！（1.16~4.3）\n🏅凯旋锦标赛开启！（1.30~2.13）\n货币位置详见http://t.cn/AXqu5alC\n今日黑石位置：云野三塔图/鲤鱼池（具体位置待补）\n(时间：18:18-22:10 02:18-06:10 10:18-14:10）\n二月 ​​​",
-          "images": [
-            "http://baizihaoxiao.xin/data/光遇/sky1.png",
-            "http://baizihaoxiao.xin/data/光遇/sky2.png",
-            "http://baizihaoxiao.xin/data/光遇/sky3.png"
-          ]
-        }
-      };
+      const messages = [
+        segment.text('id: 5263355163706260\n'),
+        segment.image('http://baizihaoxiao.xin/data/光遇/sky1.png'),
+        segment.image('http://baizihaoxiao.xin/data/光遇/sky2.png'),
+        segment.image('http://baizihaoxiao.xin/data/光遇/sky3.png')
+      ];
       
-      console.log('[光遇任务卡片] 开始构建消息');
-      const cardMessage = await this.buildCardMessage(exampleData.data);
-      
-      console.log('[光遇任务卡片] 准备发送消息');
-      await e.reply(cardMessage);
-      console.log('[光遇任务卡片] 消息发送成功');
-      
+      await e.reply(messages);
+      console.log('消息发送完成');
     } catch (err) {
-      console.error('[光遇任务卡片] 生成失败：', err);
-      await e.reply('生成光遇国际服任务卡片失败，请稍后重试~');
+      console.error('发送失败:', err);
+      await e.reply('发送失败：' + err.message);
     }
-  }
-
-  async buildCardMessage(data) {
-    const messages = [];
-    
-    // 第一行：ID信息
-    messages.push(segment.text(`id: ${data.id}`));
-    
-    // 添加三张图片
-    if (data.images && Array.isArray(data.images)) {
-      console.log('[光遇任务卡片] 图片数量:', data.images.length);
-      for (let i = 0; i < data.images.length; i++) {
-        const imgUrl = data.images[i];
-        console.log(`[光遇任务卡片] 图片${i+1}:`, imgUrl);
-        if (imgUrl && typeof imgUrl === 'string') {
-          messages.push(segment.image(imgUrl));
-        }
-      }
-    } else {
-      console.log('[光遇任务卡片] 没有找到图片数据');
-    }
-    
-    return messages;
   }
 }
