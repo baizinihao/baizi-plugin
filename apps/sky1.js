@@ -28,18 +28,14 @@ export class SkyInternationalTask extends plugin {
             const cleanText = text.replace(/\n/g, '\r').replace(/​/g, '').replace(/\\\//g, '/').trim();
             const fullText = `【sky助手】光遇国际服每日任务\r\r${cleanText}\r\r📅更新时间：${time}\r©️来源：${source}\r🔗 接口支持：baizihaoxiao.xin`;
 
-            // 1. 只保留1个标题，解决重复问题
-            // 2. 图片用「消息段对象」，让机器人直接渲染图片（不再显示CQ码）
-            let MsgList = [
-                '光遇国际服每日任务', // 唯一标题
-                fullText // 内容文本
-            ];
-            // 图片转消息段对象，自动渲染为图片
+            // 去掉MsgList里的重复标题，只保留内容文本
+            let MsgList = [fullText];
+            // 图片仍用消息段对象渲染
             images.forEach(imgUrl => {
                 MsgList.push({ type: 'image', data: { file: imgUrl.replace(/\\\//g, '/') } });
             });
 
-            // 生成转发卡片
+            // 仅通过makeForwardMsg的第三个参数设置唯一标题
             const forwardMsg = await common.makeForwardMsg(e, MsgList, '光遇国际服每日任务');
             await e.reply(forwardMsg);
             return true;
