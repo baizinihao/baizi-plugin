@@ -1,4 +1,5 @@
 import plugin from '../../../lib/plugins/plugin.js';
+import common from '../../../lib/common/common.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -27,10 +28,24 @@ export class SkyInternationalTask extends plugin {
             const cleanText = text.replace(/\n/g, '\r').replace(/​/g, '').replace(/\\\//g, '/').trim();
             const fullText = `【sky助手】光遇国际服每日任务\r\r${cleanText}\r\r📅更新时间：${time}\r©️来源：${source}\r🔗 接口支持：baizihaoxiao.xin`;
 
-            const msgArray = [{ type: 'text', data: { text: fullText } }];
-            images.forEach(imgUrl => msgArray.push({ type: 'image', data: { file: imgUrl.replace(/\\\//g, '/') } }));
+            const forwardNodes = [
+                {
+                    user_id: 80000000,
+                    nickname: "sky助手",
+                    message: [{ type: 'text', data: { text: fullText } }]
+                }
+            ];
 
-            await e.reply(msgArray);
+            images.forEach(imgUrl => {
+                forwardNodes.push({
+                    user_id: 80000000,
+                    nickname: "sky助手",
+                    message: [{ type: 'image', data: { file: imgUrl.replace(/\\\//g, '/') } }]
+                });
+            });
+
+            const forwardMsg = await common.makeForwardMsg(e, forwardNodes, "光遇国际服每日任务");
+            await e.reply(forwardMsg);
             return true;
         } catch {
             await e.reply({ type: 'text', data: { text: '【sky助手】光遇国际服任务查询失败，请稍后重试~' } }, true);
