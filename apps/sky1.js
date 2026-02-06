@@ -28,14 +28,11 @@ export class SkyInternationalTask extends plugin {
             const cleanText = text.replace(/\n/g, '\r').replace(/​/g, '').replace(/\\\//g, '/').trim();
             const fullText = `【sky助手】光遇国际服每日任务\r\r${cleanText}\r\r📅更新时间：${time}\r©️来源：${source}\r🔗 接口支持：baizihaoxiao.xin`;
 
-            // 去掉MsgList里的重复标题，只保留内容文本
             let MsgList = [fullText];
-            // 图片仍用消息段对象渲染
             images.forEach(imgUrl => {
                 MsgList.push({ type: 'image', data: { file: imgUrl.replace(/\\\//g, '/') } });
             });
 
-            // 仅通过makeForwardMsg的第三个参数设置唯一标题
             const forwardMsg = await common.makeForwardMsg(e, MsgList, '光遇国际服每日任务');
             await e.reply(forwardMsg);
             return true;
