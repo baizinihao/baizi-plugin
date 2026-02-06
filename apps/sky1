@@ -1,48 +1,81 @@
 import plugin from '../../../lib/plugins/plugin.js';
-import { logger } from '../../../lib/logger.js';
-import segment from '../../../lib/segment.js';
 
 const CONFIG = {
-  skyGuojiUrl: 'http://baizihaoxiao.xin/API/sky5.php'
+  // 国际服任务API接口
+  taskApiUrl: 'http://baizihaoxiao.xin/API/sky_task.php',
+  // 默认示例数据（如果API不可用时使用）
+  defaultData: {
+    id: 5263355163706260,
+    images: [
+      "http://baizihaoxiao.xin/data/光遇/sky1.png",
+      "http://baizihaoxiao.xin/data/光遇/sky2.png", 
+      "http://baizihaoxiao.xin/data/光遇/sky3.png"
+    ]
+  }
 };
 
-export default class SkyGuojiTask extends plugin {
+export default class SkyTaskCard extends plugin {
   constructor() {
     super({
-      name: '光遇国际服任务',
-      dsc: '获取光遇国际服每日任务，返回转发卡片',
+      name: '光遇国际服任务卡片',
+      dsc: '获取光遇国际服任务信息并以卡片形式展示',
       event: 'message',
       priority: 5000,
       rule: [
         {
-          reg: /^#?国际服任务$/,
-          fnc: 'sendSkyGuojiTask'
+          reg: '^#?国际服任务$',
+          fnc: 'sendTaskCard'
         }
       ]
     });
   }
 
-  async sendSkyGuojiTask(e) {
+  async sendTaskCard(e) {
     try {
-      const res = await fetch(CONFIG.skyGuojiUrl, { timeout: 15000 });
-      if (!res.ok) throw new Error(`接口请求失败，状态码：${res.status}`);
+      // 发送请求获取任务数据
+      let taskData;
       
-      const data = await res.json();
-      if (data.status !== 'success') throw new Error(data.message || '接口返回异常');
-      
-      const forwardMsg = [];
-      forwardMsg.push(segment.text(`id: ${data.data.id}`));
-      
-      if (data.data.images && Array.isArray(data.data.images) && data.data.images.length > 0) {
-        data.data.images.forEach(imgUrl => {
-          forwardMsg.push(segment.image(imgUrl));
-        });
+      try {
+        const res = await fetch(CONFIG.taskApiUrl, { timeout: 15000 });
+        if (res.ok) {
+          const result = await res.json();
+          taskData = result.data;
+        } else {
+          logger.warn(`[光遇任务卡片] API请求失败，使用默认数据`);
+          taskData = CONFIG.defaultData;
+        }
+      } catch (apiErr) {
+        logger.error(`[光遇任务卡片] API调用失败：`, apiErr);
+        taskData = CONFIG.defaultData;
       }
+
+      // 构建转发卡片消息
+      const cardMessage = await this.buildCardMessage(taskData);
       
-      await e.reply(forwardMsg, { forward: true });
+      // 发送卡片消息
+      await e.reply(cardMessage);
+      
     } catch (err) {
-      logger.error(`[光遇国际服任务] 执行失败：${err.message}`);
-      await e.reply(`光遇国际服任务获取失败：${err.message}`);
+      logger.error(`[光遇任务卡片] 生成失败：`, err);
+      await e.reply('生成光遇国际服任务卡片失败，请稍后重试~');
     }
+  }
+
+  async buildCardMessage(data) {
+    const messages = [];
+    
+    // 第一行：ID信息
+    messages.push(segment.text(`id: ${data.id}`));
+    
+    // 添加三张图片（按顺序）
+    if (data.images && Array.isArray(data.images)) {
+      for (const imgUrl of data.images) {
+        if (imgUrl && typeof imgUrl === 'string') {
+          messages.push(segment.image(imgUrl));
+        }
+      }
+    }
+    
+    return messages;
   }
 }
