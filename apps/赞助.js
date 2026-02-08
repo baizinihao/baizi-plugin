@@ -175,21 +175,8 @@ export class ZanzhuPlugin extends plugin {
           });
           
           if (response.data) {
-            let name = '';
-            let imgurl = '';
-            
-            if (response.data.name || response.data.nickname) {
-              name = response.data.name || response.data.nickname;
-            } else if (response.data.data?.name) {
-              name = response.data.data.name;
-            }
-            
-            if (response.data.imgurl || response.data.avatar) {
-              imgurl = response.data.imgurl || response.data.avatar;
-            } else if (response.data.data?.imgurl) {
-              imgurl = response.data.data.imgurl;
-            }
-            
+            let name = response.data.name || response.data.nickname || response.data.data?.name || '';
+            let imgurl = response.data.imgurl || response.data.avatar || response.data.data?.imgurl || '';
             return {
               success: true,
               nickname: name || `用户${this.hideQQNumber(qqnumber)}`,
@@ -274,16 +261,29 @@ export class ZanzhuPlugin extends plugin {
     }
   }
 
-  async sendForward(e, cmd, content) {
+  // 严格遵循框架合并转发格式：每个节点的message是标准消息对象数组
+  async sendForward(e, cmd, msgObjects) {
     const forwardNodes = [
-      { user_id: '3812808525', message: cmd },
-      { user_id: '3812808525', message: content }
+      {
+        user_id: '3812808525',
+        message: [{ type: 'text', data: { text: cmd } }] // 第一个节点：纯文本指令
+      },
+      {
+        user_id: '3812808525',
+        message: msgObjects // 第二个节点：文本+图片消息对象数组
+      }
     ];
+    
     try {
-      const forwardMsg = await e.group.makeForwardMsg(forwardNodes);
+      let forwardMsg;
+      if (e.isGroup) {
+        forwardMsg = await e.group.makeForwardMsg(forwardNodes);
+      } else {
+        forwardMsg = await e.friend.makeForwardMsg(forwardNodes); // 私聊适配
+      }
       await e.reply(forwardMsg);
     } catch (forwardError) {
-      await e.reply(content);
+      await e.reply(msgObjects); // 降级兜底
     }
   }
 
@@ -294,8 +294,8 @@ export class ZanzhuPlugin extends plugin {
     try {
       const data = await this.getData();
       if (data.length === 0) {
-        const emptyTip = `暂无${cmd}数据，快来成为第一个支持的人吧！(๑•̀ㅂ•́)و✧`;
-        return await this.sendForward(e, cmd, emptyTip);
+        const emptyMsg = [{ type: 'text', data: { text: `暂无${cmd}数据，快来成为第一个支持的人吧！(๑•̀ㅂ•́)و✧` } }];
+        return await this.sendForward(e, cmd, emptyMsg);
       }
 
       const qqInfoPromises = data.map(item => this.getQQInfo(item.qqnumber));
@@ -305,14 +305,12 @@ export class ZanzhuPlugin extends plugin {
       for (let i = 0; i < data.length; i++) {
         const item = data[i];
         const infoResult = qqInfoResults[i];
-        let qqInfo = infoResult.status === 'fulfilled' 
-          ? infoResult.value 
-          : {
-              success: false,
-              nickname: `用户${this.hideQQNumber(item.qqnumber)}`,
-              avatar: `https://q1.qlogo.cn/g?b=qq&nk=${item.qqnumber}&s=640`,
-              uin: qqnumber
-            };
+        const qqInfo = infoResult.status === 'fulfilled' ? infoResult.value : {
+          success: false,
+          nickname: `用户${this.hideQQNumber(item.qqnumber)}`,
+          avatar: `https://q1.qlogo.cn/g?b=qq&nk=${item.qqnumber}&s=640`,
+          uin: item.qqnumber
+        };
         
         sponsors.push({
           ...item,
@@ -323,63 +321,78 @@ export class ZanzhuPlugin extends plugin {
         });
       }
 
-      let message = '';
-      message += '┏━━━━━━━━━━━━━━━━━━━━━━━━┓\n';
-      message += `┃      🐾 白子の${cmd} 🐾      ┃\n`;
-      message += '┗━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n';
+      // 组装标准消息对象数组（文本+图片分开）
+      const msgObjects = [];
+      
+      // 标题文本
+      let titleText = `┏━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
+      titleText += `┃      🐾 白子の${cmd} 🐾      ┃\n`;
+      titleText += `┗━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
+      msgObjects.push({ type: 'text', data: { text: titleText } });
 
+      // 前10名支持者（文本+头像图片）
       const displayLimit = Math.min(sponsors.length, 10);
       for (let i = 0; i < displayLimit; i++) {
         const sponsor = sponsors[i];
-        let rankIcon = i === 0 ? '👑 ' : i === 1 ? '💎 ' : i === 2 ? '✨ ' : '⭐ ';
-        const money = sponsor.money;
-        let moneyColor = money >= 1000 ? '💰💰💰' : money >= 500 ? '💰💰' : money >= 100 ? '💰' : '';
+        const rankIcon = i === 0 ? '👑 ' : i === 1 ? '💎 ' : i === 2 ? '✨ ' : '⭐ ';
+        const moneyColor = sponsor.money >= 1000 ? '💰💰💰' : sponsor.money >= 500 ? '💰💰' : sponsor.money >= 100 ? '💰' : '';
         
-        message += `${rankIcon}${sponsor.rank} ${sponsor.qqInfo.nickname}\n`;
-        message += `  ↳ ID: ${sponsor.hiddenQQ} | ${moneyColor}${sponsor.moneyStr}\n`;
-        if (i < displayLimit - 1) message += '─'.repeat(24) + '\n';
+        // 支持者信息文本
+        const sponsorText = `${rankIcon}${sponsor.rank} ${sponsor.qqInfo.nickname}\n` +
+                           `  ↳ ID: ${sponsor.hiddenQQ} | ${moneyColor}${sponsor.moneyStr}\n` +
+                           (i < displayLimit - 1 ? '─'.repeat(24) + '\n' : '');
+        msgObjects.push({ type: 'text', data: { text: sponsorText } });
+        
+        // 支持者头像图片（如果有）
+        if (sponsor.qqInfo.avatar) {
+          msgObjects.push({ type: 'image', data: { file: sponsor.qqInfo.avatar } });
+        }
       }
 
+      // 其他支持者（仅文本）
       if (sponsors.length > displayLimit) {
-        message += '\n💫 其他支持者 💫\n';
+        let otherText = '\n💫 其他支持者 💫\n';
         for (let i = displayLimit; i < Math.min(sponsors.length, displayLimit + 10); i++) {
           const sponsor = sponsors[i];
-          message += `${sponsor.rank} ${sponsor.qqInfo.nickname} - ${sponsor.moneyStr}\n`;
+          otherText += `${sponsor.rank} ${sponsor.qqInfo.nickname} - ${sponsor.moneyStr}\n`;
         }
         if (sponsors.length > displayLimit + 10) {
-          message += `...等 ${sponsors.length - displayLimit - 10} 位支持者\n`;
+          otherText += `...等 ${sponsors.length - displayLimit - 10} 位支持者\n`;
         }
+        msgObjects.push({ type: 'text', data: { text: otherText } });
       }
 
+      // 统计信息
       const totalAmount = sponsors.reduce((sum, item) => sum + item.money, 0);
       const totalSponsors = sponsors.length;
       const avgAmount = totalSponsors > 0 ? totalAmount / totalSponsors : 0;
       const maxAmount = sponsors.length > 0 ? Math.max(...sponsors.map(item => item.money)) : 0;
 
-      message += '\n════════════════════════\n';
-      message += '📊 支持统计 📊\n';
-      message += '════════════════════════\n';
-      message += `✨ 累计金额: ${this.formatMoney(totalAmount)}\n`;
-      message += `👥 支持人数: ${totalSponsors}人\n`;
-      message += `📈 人均支持: ${this.formatMoney(avgAmount)}\n`;
-      message += `🏆 最高支持: ${this.formatMoney(maxAmount)}\n`;
-      message += '════════════════════════\n';
-      message += '💕 感谢各位大大的支持！ 💕\n';
-      message += '© liusu 2024-2026\n';
+      let statsText = '\n════════════════════════\n';
+      statsText += '📊 支持统计 📊\n';
+      statsText += '════════════════════════\n';
+      statsText += `✨ 累计金额: ${this.formatMoney(totalAmount)}\n`;
+      statsText += `👥 支持人数: ${totalSponsors}人\n`;
+      statsText += `📈 人均支持: ${this.formatMoney(avgAmount)}\n`;
+      statsText += `🏆 最高支持: ${this.formatMoney(maxAmount)}\n`;
+      statsText += '════════════════════════\n';
+      statsText += '💕 感谢各位大大的支持！ 💕\n';
+      statsText += '© liusu 2024-2026\n';
+      msgObjects.push({ type: 'text', data: { text: statsText } });
 
+      // 生成的图片（如果有）
       const imageData = await this.createZanzhuImage(sponsors, {
         totalAmount,
         totalSponsors,
         avgAmount,
         maxAmount
       });
-
-      let replyContent = message;
       if (imageData) {
-        replyContent = [message, { type: 'image', data: { file: `base64://${imageData}` } }];
+        msgObjects.push({ type: 'image', data: { file: `base64://${imageData}` } });
       }
 
-      await this.sendForward(e, cmd, replyContent);
+      // 发送合并转发
+      await this.sendForward(e, cmd, msgObjects);
       this.cleanOldAvatarFiles();
       
     } catch (err) {
