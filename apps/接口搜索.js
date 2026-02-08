@@ -103,23 +103,22 @@ export class ApiSearch extends plugin {
       }
     }
 
-    // 改用框架要求的“name”字段（显示名称）+“uin”字段（头像对应的QQ号）
+    // 明确用“文本消息对象”格式，避免匿名
     const forwardNodes = [
       {
-        name: e.sender.nickname || e.sender.card || '用户', // 第一个节点：用户的名称
-        uin: e.user_id, // 第一个节点：用户的QQ号
-        message: `搜索接口：${keyword}`
+        name: e.sender.card || e.sender.nickname || '用户', // 优先用群名片
+        uin: e.user_id.toString(), // 转成字符串避免格式错误
+        message: [{ type: 'text', data: { text: `搜索接口：${keyword}` } }]
       },
       {
-        name: '白子API', // 第二个节点：强制显示的名称
-        uin: 3812808525, // 第二个节点：头像对应的QQ号
-        message: resultText
+        name: '白子API',
+        uin: '3812808525', // 明确为字符串格式
+        message: [{ type: 'text', data: { text: resultText } }]
       }
     ];
     
     try {
       if (e.isGroup) {
-        // 调用框架原生合并转发方法，传入标准节点结构
         const forwardMsg = await e.group.makeForwardMsg(forwardNodes);
         await e.reply(forwardMsg);
       } else {
