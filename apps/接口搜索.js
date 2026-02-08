@@ -111,15 +111,20 @@ export class ApiSearch extends plugin {
       message: `搜索接口：${keyword}`
     });
     
+    // 强制指定昵称“白子API”，优先级高于QQ号真实昵称
     forwardMessages.push({
-      user_id: 3812808525, // 已替换为指定QQ号（10位，符合uint32范围）
+      user_id: 3812808525,
       nickname: '白子API',
-      message: resultText
+      message: resultText,
+      // 增加强制标识（部分框架需要）
+      forceNickname: true
     });
     
     try {
       if (e.isGroup) {
         const forwardMsg = await e.group.makeForwardMsg(forwardMessages);
+        // 兼容框架：手动设置转发节点的昵称
+        forwardMsg.data.messages[1].data.name = '白子API';
         await e.reply(forwardMsg);
       } else {
         await e.reply(resultText);
