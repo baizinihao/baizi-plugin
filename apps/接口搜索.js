@@ -70,6 +70,16 @@ export class ApiSearch extends plugin {
     }
   }
 
+  async getAvatarBase64() {
+    const res = await fetch('http://baizihaoxiao.xin/API/jixuanyou.php');
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  }
+
   async sendForwardMessage(keyword, data) {
     const e = this.e;
     let resultText = `搜索关键词：${keyword}\n`;
@@ -103,6 +113,7 @@ export class ApiSearch extends plugin {
       }
     }
 
+    const avatarBase64 = await this.getAvatarBase64();
     const forwardMessages = [];
     
     forwardMessages.push({
@@ -114,7 +125,7 @@ export class ApiSearch extends plugin {
     forwardMessages.push({
       user_id: 10000,
       nickname: '白子API',
-      avatar: 'http://baizihaoxiao.xin/API/jixuanyou.php?type=png',
+      avatar: avatarBase64,
       message: resultText
     });
     
