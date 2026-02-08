@@ -114,7 +114,7 @@ export class ApiSearch extends plugin {
     forwardMessages.push({
       user_id: 10000,
       nickname: '白子API',
-      avatar: 'http://baizihaoxiao.xin/API/jixuanyou.php', // 已准确替换为你指定的头像链接
+      avatar: 'http://baizihaoxiao.xin/API/jixuanyou.php?type=png',
       message: resultText
     });
     
