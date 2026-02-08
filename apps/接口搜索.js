@@ -103,31 +103,27 @@ export class ApiSearch extends plugin {
       }
     }
 
-    const forwardMessages = [];
-    
-    forwardMessages.push({
-      user_id: e.user_id,
-      nickname: e.sender.nickname || e.sender.card || '用户',
-      message: `搜索接口：${keyword}`
-    });
-    
-    // 强制指定昵称“白子API”，优先级高于QQ号真实昵称
-    forwardMessages.push({
-      user_id: 3812808525,
-      nickname: '白子API',
-      message: resultText,
-      // 增加强制标识（部分框架需要）
-      forceNickname: true
-    });
+    // 纯原生转发配置，不篡改框架结构
+    const forwardMessages = [
+      {
+        user_id: e.user_id,
+        nickname: e.sender.nickname || e.sender.card || '用户',
+        message: `搜索接口：${keyword}`
+      },
+      {
+        user_id: 3812808525, // 正确的QQ号
+        nickname: '白子API',  // 要显示的名称
+        message: resultText
+      }
+    ];
     
     try {
       if (e.isGroup) {
+        // 直接调用框架原生方法，不修改返回结果
         const forwardMsg = await e.group.makeForwardMsg(forwardMessages);
-        // 兼容框架：手动设置转发节点的昵称
-        forwardMsg.data.messages[1].data.name = '白子API';
         await e.reply(forwardMsg);
       } else {
-        await e.reply(resultText);
+        await e.reply(forwardMessages);
       }
     } catch (error) {
       await e.reply(resultText);
