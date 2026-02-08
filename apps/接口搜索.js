@@ -103,14 +103,13 @@ export class ApiSearch extends plugin {
       }
     }
 
-    // 纯原生配置：两个节点都用3812808525对应的真实信息
     const forwardNodes = [
       {
-        user_id: '3812808525', // 第一个节点：用目标QQ号
+        user_id: '3812808525',
         message: `搜索接口：${keyword}`
       },
       {
-        user_id: '3812808525', // 第二个节点：同样用目标QQ号
+        user_id: '3812808525',
         message: resultText
       }
     ];
