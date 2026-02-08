@@ -59,7 +59,8 @@ export class ApiSearch extends plugin {
         data = { raw: dataText };
       }
       
-      await this.sendForwardMessage(keyword, data);
+      // 改用引用回复+明确标识
+      await this.sendReplyWithSender(keyword, data);
       
     } catch (err) {
       clearTimeout(timeoutId);
@@ -70,9 +71,10 @@ export class ApiSearch extends plugin {
     }
   }
 
-  async sendForwardMessage(keyword, data) {
+  async sendReplyWithSender(keyword, data) {
     const e = this.e;
-    let resultText = `搜索关键词：${keyword}\n`;
+    // 消息开头明确标出发言人“白子API”
+    let resultText = `【白子API】\n搜索关键词：${keyword}\n`;
     
     if (data.raw) {
       resultText += data.raw;
@@ -103,29 +105,9 @@ export class ApiSearch extends plugin {
       }
     }
 
-    // 明确用“文本消息对象”格式，避免匿名
-    const forwardNodes = [
-      {
-        name: e.sender.card || e.sender.nickname || '用户', // 优先用群名片
-        uin: e.user_id.toString(), // 转成字符串避免格式错误
-        message: [{ type: 'text', data: { text: `搜索接口：${keyword}` } }]
-      },
-      {
-        name: '白子API',
-        uin: '3812808525', // 明确为字符串格式
-        message: [{ type: 'text', data: { text: resultText } }]
-      }
-    ];
-    
-    try {
-      if (e.isGroup) {
-        const forwardMsg = await e.group.makeForwardMsg(forwardNodes);
-        await e.reply(forwardMsg);
-      } else {
-        await e.reply(forwardNodes);
-      }
-    } catch (error) {
-      await e.reply(resultText);
-    }
+    // 引用用户的搜索请求，模拟对话感
+    await e.reply(resultText, true, {
+      quote: e.message_id // 引用用户的消息
+    });
   }
 }
