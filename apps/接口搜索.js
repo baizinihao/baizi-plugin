@@ -112,7 +112,7 @@ export class ApiSearch extends plugin {
     });
     
     forwardMessages.push({
-      user_id: 38128085258, // 已替换为指定QQ号
+      user_id: 3812808525, // 已替换为指定QQ号（10位，符合uint32范围）
       nickname: '白子API',
       message: resultText
     });
