@@ -9,7 +9,7 @@ export class ApiSearch extends plugin {
       priority: 5000,
       rule: [
         {
-          reg: /^#?搜索接口\s+(.+)$/, // 关键修复：用正则字面量，\s+匹配1个及以上空格
+          reg: /^#?搜索接口\s+(.+)$/,
           fnc: 'searchApi'
         }
       ]
@@ -18,8 +18,8 @@ export class ApiSearch extends plugin {
 
   async searchApi() {
     const e = this.e;
-    const match = e.msg.match(/^#?搜索接口\s+(.+)$/); // 同步修复正则
-    if (!match || !match[1]) { // 这里改成match[1]（分组1对应关键词）
+    const match = e.msg.match(/^#?搜索接口\s+(.+)$/);
+    if (!match || !match[1]) {
       await e.reply('请输入格式：搜索接口 关键词（例：搜索接口 云盘）', true);
       return;
     }
@@ -72,7 +72,7 @@ export class ApiSearch extends plugin {
 
   async sendForwardMessage(keyword, data) {
     const e = this.e;
-    let resultText = `搜索关键词：${keyword}\n\n`;
+    let resultText = `搜索关键词：${keyword}\n`; // 去掉多余空行
     
     if (data.raw) {
       resultText += data.raw;
@@ -80,25 +80,26 @@ export class ApiSearch extends plugin {
       if (data.状态码 === 200 && data.数据列表 && data.数据列表.length > 0) {
         resultText += `搜索结果：共找到${data.数据列表.length}个相关接口\n\n`;
         data.数据列表.forEach((api, index) => {
+          // 接口信息紧凑排版，去掉多余空行
           resultText += `【${index + 1}】接口名称：${api.接口名称}\n`;
           resultText += `调用地址：${api.调用地址}\n`;
-          resultText += `接口状态：${api.接口状态}\n`;
-          resultText += `添加时间：${api.添加时间}\n`;
-          resultText += `调用次数：${api.调用次数}\n`;
-          resultText += `访问权限：${api.访问权限}\n`;
+          resultText += `接口状态：${api.接口状态} | 添加时间：${api.添加时间}\n`;
+          resultText += `调用次数：${api.调用次数} | 访问权限：${api.访问权限}\n`;
           
           if (api.请求参数 && api.请求参数.length > 0) {
             resultText += `请求参数：\n`;
             api.请求参数.forEach((param, pIndex) => {
-              resultText += `  ${pIndex + 1}. 参数名：${param.参数名}\n`;
-              resultText += `     类型：${param.类型}\n`;
-              resultText += `     必填：${param.必填}\n`;
+              // 参数横向紧凑展示，减少换行
+              resultText += `  ${pIndex + 1}. ${param.参数名}（类型：${param.类型} | 必填：${param.必填}）\n`;
               resultText += `     说明：${param.说明}\n`;
             });
           } else {
             resultText += `请求参数：无\n`;
           }
-          resultText += `\n`;
+          // 接口之间只留一个空行分隔
+          if (index < data.数据列表.length - 1) {
+            resultText += `\n`;
+          }
         });
       } else {
         resultText += data.搜索结果 || '未找到相关接口';
@@ -116,7 +117,7 @@ export class ApiSearch extends plugin {
     forwardMessages.push({
       user_id: 10000,
       nickname: '白子API',
-      avatar: 'http://baizihaoxiao.xin/API/sn.php',
+      avatar: 'http://baizihaoxiao.xin/API/jixuanyou.php', // 更换为指定头像链接
       message: resultText
     });
     
