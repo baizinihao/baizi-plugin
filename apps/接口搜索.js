@@ -72,7 +72,7 @@ export class ApiSearch extends plugin {
 
   async sendForwardMessage(keyword, data) {
     const e = this.e;
-    let resultText = `搜索关键词：${keyword}\n`; // 去掉多余空行
+    let resultText = `搜索关键词：${keyword}\n`;
     
     if (data.raw) {
       resultText += data.raw;
@@ -80,7 +80,6 @@ export class ApiSearch extends plugin {
       if (data.状态码 === 200 && data.数据列表 && data.数据列表.length > 0) {
         resultText += `搜索结果：共找到${data.数据列表.length}个相关接口\n\n`;
         data.数据列表.forEach((api, index) => {
-          // 接口信息紧凑排版，去掉多余空行
           resultText += `【${index + 1}】接口名称：${api.接口名称}\n`;
           resultText += `调用地址：${api.调用地址}\n`;
           resultText += `接口状态：${api.接口状态} | 添加时间：${api.添加时间}\n`;
@@ -89,14 +88,12 @@ export class ApiSearch extends plugin {
           if (api.请求参数 && api.请求参数.length > 0) {
             resultText += `请求参数：\n`;
             api.请求参数.forEach((param, pIndex) => {
-              // 参数横向紧凑展示，减少换行
               resultText += `  ${pIndex + 1}. ${param.参数名}（类型：${param.类型} | 必填：${param.必填}）\n`;
               resultText += `     说明：${param.说明}\n`;
             });
           } else {
             resultText += `请求参数：无\n`;
           }
-          // 接口之间只留一个空行分隔
           if (index < data.数据列表.length - 1) {
             resultText += `\n`;
           }
@@ -117,7 +114,7 @@ export class ApiSearch extends plugin {
     forwardMessages.push({
       user_id: 10000,
       nickname: '白子API',
-      avatar: 'http://baizihaoxiao.xin/API/jixuanyou.php', // 更换为指定头像链接
+      avatar: 'http://baizihaoxiao.xin/API/jixuanyou.php', // 已准确替换为你指定的头像链接
       message: resultText
     });
     
