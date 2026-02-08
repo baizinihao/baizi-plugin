@@ -28,18 +28,45 @@ export class ApiQuery extends plugin {
     }
   }
 
+  // 通用合并转发发送方法
+  async sendForward(e, cmd, content) {
+    const forwardNodes = [
+      {
+        user_id: '3812808525',
+        message: cmd
+      },
+      {
+        user_id: '3812808525',
+        message: content
+      }
+    ];
+    try {
+      if (e.isGroup) {
+        const forwardMsg = await e.group.makeForwardMsg(forwardNodes);
+        await e.reply(forwardMsg);
+      } else {
+        await e.reply(forwardNodes);
+      }
+    } catch (error) {
+      await e.reply(content);
+    }
+  }
+
   async getLog(e) {
+    const cmd = "更新日志";
     const res = await this.requestApi("http://baizihaoxiao.xin/API/gn.php");
-    await e.reply(res);
+    await this.sendForward(e, cmd, res);
   }
 
   async getCount(e) {
+    const cmd = "调用统计";
     const res = await this.requestApi("http://baizihaoxiao.xin/API/ti.php");
-    await e.reply(res);
+    await this.sendForward(e, cmd, res);
   }
 
   async getDelay(e) {
+    const cmd = "延迟测试";
     const res = await this.requestApi("http://baizihaoxiao.xin/API/ys.php");
-    await e.reply(res);
+    await this.sendForward(e, cmd, res);
   }
 }
