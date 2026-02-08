@@ -70,14 +70,13 @@ export class ApiSearch extends plugin {
     }
   }
 
+  // Node.js环境下的头像转Base64逻辑
   async getAvatarBase64() {
     const res = await fetch('http://baizihaoxiao.xin/API/jixuanyou.php');
-    const blob = await res.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
-    });
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64Str = buffer.toString('base64');
+    return `data:image/png;base64,${base64Str}`;
   }
 
   async sendForwardMessage(keyword, data) {
