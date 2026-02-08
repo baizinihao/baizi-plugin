@@ -9,7 +9,7 @@ export class ApiSearch extends plugin {
       priority: 5000,
       rule: [
         {
-          reg: '^#?搜索接口\\s(.+)$',
+          reg: /^#?搜索接口\s+(.+)$/, // 关键修复：用正则字面量，\s+匹配1个及以上空格
           fnc: 'searchApi'
         }
       ]
@@ -18,12 +18,12 @@ export class ApiSearch extends plugin {
 
   async searchApi() {
     const e = this.e;
-    const match = e.msg.match(/^#?搜索接口\\s(.+)$/);
-    if (!match || !match[2]) {
+    const match = e.msg.match(/^#?搜索接口\s+(.+)$/); // 同步修复正则
+    if (!match || !match[1]) { // 这里改成match[1]（分组1对应关键词）
       await e.reply('请输入格式：搜索接口 关键词（例：搜索接口 云盘）', true);
       return;
     }
-    const keyword = match[2].trim();
+    const keyword = match[1].trim();
     
     if (keyword.length > 20) {
       await e.reply('搜索关键词长度不能超过20个字符', true);
@@ -115,8 +115,8 @@ export class ApiSearch extends plugin {
     
     forwardMessages.push({
       user_id: 10000,
-      nickname: '白子API', // 自定义名称
-      avatar: 'http://baizihaoxiao.xin/API/sn.php', // 你指定的头像链接
+      nickname: '白子API',
+      avatar: 'http://baizihaoxiao.xin/API/sn.php',
       message: resultText
     });
     
