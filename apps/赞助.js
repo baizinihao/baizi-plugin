@@ -21,7 +21,8 @@ export class ZanzhuPlugin extends plugin {
         { reg: '^#?赞助添加\\s*(\\d+):(\\d+(\\.\\d+)?)$', fnc: 'addZanzhu' },
         { reg: '^#?赞助修改\\s*(\\d+):(\\d+(\\.\d+)?)$', fnc: 'updateZanzhu' },
         { reg: '^#?赞助删除\\s*(\\d+)$', fnc: 'deleteZanzhu' },
-        { reg: '^#?(赞助|投喂)榜$', fnc: 'showZanzhu' }
+        { reg: '^#?赞助榜$', fnc: 'showZanzhu' },
+        { reg: '^#?投喂榜$', fnc: 'showZanzhu' }
       ]
     });
     
@@ -279,25 +280,22 @@ export class ZanzhuPlugin extends plugin {
       { user_id: '3812808525', message: content }
     ];
     try {
-      if (e.isGroup) {
-        const forwardMsg = await e.group.makeForwardMsg(forwardNodes);
-        await e.reply(forwardMsg);
-      } else {
-        await e.reply(forwardNodes);
-      }
+      const forwardMsg = await e.group.makeForwardMsg(forwardNodes);
+      await e.reply(forwardMsg);
     } catch (forwardError) {
       await e.reply(content);
     }
   }
 
   async showZanzhu(e) {
+    const cmd = e.msg.includes('赞助') ? '赞助榜' : '投喂榜';
+    await e.reply(`正在整理${cmd}数据...\n请稍候 ⸜(๑\'ᵕ\'๑)⸝⋆*`);
+    
     try {
-      await e.reply('正在整理各位大大的投喂...\n请等一下噢 ⸜(๑\'ᵕ\'๑)⸝⋆*');
-      
       const data = await this.getData();
       if (data.length === 0) {
-        const cmd = e.msg.includes('赞助') ? '赞助榜' : '投喂榜';
-        return await this.sendForward(e, cmd, '暂无赞助数据，快来成为第一个投喂者吧！(๑•̀ㅂ•́)و✧');
+        const emptyTip = `暂无${cmd}数据，快来成为第一个支持的人吧！(๑•̀ㅂ•́)و✧`;
+        return await this.sendForward(e, cmd, emptyTip);
       }
 
       const qqInfoPromises = data.map(item => this.getQQInfo(item.qqnumber));
@@ -313,7 +311,7 @@ export class ZanzhuPlugin extends plugin {
               success: false,
               nickname: `用户${this.hideQQNumber(item.qqnumber)}`,
               avatar: `https://q1.qlogo.cn/g?b=qq&nk=${item.qqnumber}&s=640`,
-              uin: item.qqnumber
+              uin: qqnumber
             };
         
         sponsors.push({
@@ -327,7 +325,7 @@ export class ZanzhuPlugin extends plugin {
 
       let message = '';
       message += '┏━━━━━━━━━━━━━━━━━━━━━━━━┓\n';
-      message += '┃      🐾 白子の投喂榜 🐾      ┃\n';
+      message += `┃      🐾 白子の${cmd} 🐾      ┃\n`;
       message += '┗━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n';
 
       const displayLimit = Math.min(sponsors.length, 10);
@@ -343,13 +341,13 @@ export class ZanzhuPlugin extends plugin {
       }
 
       if (sponsors.length > displayLimit) {
-        message += '\n💫 其他赞助者 💫\n';
+        message += '\n💫 其他支持者 💫\n';
         for (let i = displayLimit; i < Math.min(sponsors.length, displayLimit + 10); i++) {
           const sponsor = sponsors[i];
           message += `${sponsor.rank} ${sponsor.qqInfo.nickname} - ${sponsor.moneyStr}\n`;
         }
         if (sponsors.length > displayLimit + 10) {
-          message += `...等 ${sponsors.length - displayLimit - 10} 位赞助者\n`;
+          message += `...等 ${sponsors.length - displayLimit - 10} 位支持者\n`;
         }
       }
 
@@ -359,12 +357,12 @@ export class ZanzhuPlugin extends plugin {
       const maxAmount = sponsors.length > 0 ? Math.max(...sponsors.map(item => item.money)) : 0;
 
       message += '\n════════════════════════\n';
-      message += '📊 投喂统计 📊\n';
+      message += '📊 支持统计 📊\n';
       message += '════════════════════════\n';
       message += `✨ 累计金额: ${this.formatMoney(totalAmount)}\n`;
-      message += `👥 投喂人数: ${totalSponsors}人\n`;
-      message += `📈 人均投喂: ${this.formatMoney(avgAmount)}\n`;
-      message += `🏆 最高投喂: ${this.formatMoney(maxAmount)}\n`;
+      message += `👥 支持人数: ${totalSponsors}人\n`;
+      message += `📈 人均支持: ${this.formatMoney(avgAmount)}\n`;
+      message += `🏆 最高支持: ${this.formatMoney(maxAmount)}\n`;
       message += '════════════════════════\n';
       message += '💕 感谢各位大大的支持！ 💕\n';
       message += '© liusu 2024-2026\n';
@@ -376,7 +374,6 @@ export class ZanzhuPlugin extends plugin {
         maxAmount
       });
 
-      const cmd = e.msg.includes('赞助') ? '赞助榜' : '投喂榜';
       let replyContent = message;
       if (imageData) {
         replyContent = [message, { type: 'image', data: { file: `base64://${imageData}` } }];
@@ -386,8 +383,8 @@ export class ZanzhuPlugin extends plugin {
       this.cleanOldAvatarFiles();
       
     } catch (err) {
-      console.error('showZanzhu 执行失败:', err);
-      await e.reply('生成榜单时发生错误，请稍后重试');
+      console.error(`${cmd}生成失败:", err`);
+      await e.reply(`${cmd}生成时发生错误，请稍后重试`);
     }
   }
 
