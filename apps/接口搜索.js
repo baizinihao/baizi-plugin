@@ -59,8 +59,7 @@ export class ApiSearch extends plugin {
         data = { raw: dataText };
       }
       
-      // 改用引用回复+明确标识
-      await this.sendReplyWithSender(keyword, data);
+      await this.sendForwardMessage(keyword, data);
       
     } catch (err) {
       clearTimeout(timeoutId);
@@ -71,10 +70,9 @@ export class ApiSearch extends plugin {
     }
   }
 
-  async sendReplyWithSender(keyword, data) {
+  async sendForwardMessage(keyword, data) {
     const e = this.e;
-    // 消息开头明确标出发言人“白子API”
-    let resultText = `【白子API】\n搜索关键词：${keyword}\n`;
+    let resultText = `搜索关键词：${keyword}\n`;
     
     if (data.raw) {
       resultText += data.raw;
@@ -105,9 +103,27 @@ export class ApiSearch extends plugin {
       }
     }
 
-    // 引用用户的搜索请求，模拟对话感
-    await e.reply(resultText, true, {
-      quote: e.message_id // 引用用户的消息
-    });
+    // 纯原生配置：两个节点都用3812808525对应的真实信息
+    const forwardNodes = [
+      {
+        user_id: '3812808525', // 第一个节点：用目标QQ号
+        message: `搜索接口：${keyword}`
+      },
+      {
+        user_id: '3812808525', // 第二个节点：同样用目标QQ号
+        message: resultText
+      }
+    ];
+    
+    try {
+      if (e.isGroup) {
+        const forwardMsg = await e.group.makeForwardMsg(forwardNodes);
+        await e.reply(forwardMsg);
+      } else {
+        await e.reply(forwardNodes);
+      }
+    } catch (error) {
+      await e.reply(resultText);
+    }
   }
 }
