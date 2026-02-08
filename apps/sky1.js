@@ -1,5 +1,4 @@
 import plugin from '../../../lib/plugins/plugin.js';
-import common from '../../../lib/common/common.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -28,13 +27,32 @@ export class SkyInternationalTask extends plugin {
             const cleanText = text.replace(/\n/g, '\r').replace(/​/g, '').replace(/\\\//g, '/').trim();
             const fullText = `【sky助手】光遇国际服每日任务\r\r${cleanText}\r\r📅更新时间：${time}\r©️来源：${source}\r🔗 接口支持：baizihaoxiao.xin`;
 
-            let MsgList = [fullText];
+            let replyContent = [fullText];
             images.forEach(imgUrl => {
-                MsgList.push({ type: 'image', data: { file: imgUrl.replace(/\\\//g, '/') } });
+                replyContent.push({ type: 'image', data: { file: imgUrl.replace(/\\\//g, '/') } });
             });
 
-            const forwardMsg = await common.makeForwardMsg(e, MsgList, '光遇国际服每日任务');
-            await e.reply(forwardMsg);
+            const forwardNodes = [
+                {
+                    user_id: '3812808525',
+                    message: '国际服任务'
+                },
+                {
+                    user_id: '3812808525',
+                    message: replyContent
+                }
+            ];
+
+            try {
+                if (e.isGroup) {
+                    const forwardMsg = await e.group.makeForwardMsg(forwardNodes);
+                    await e.reply(forwardMsg);
+                } else {
+                    await e.reply(forwardNodes);
+                }
+            } catch (forwardError) {
+                await e.reply(replyContent);
+            }
             return true;
         } catch {
             await e.reply('【sky助手】光遇国际服任务查询失败，请稍后重试~', true);
