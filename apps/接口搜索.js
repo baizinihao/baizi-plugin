@@ -35,9 +35,6 @@ export class ApiSearch extends plugin {
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
-      // 先获取头像Base64（你的API返回的随机PNG）
-      const avatarBase64 = await this.getAvatarBase64();
-      
       const res = await fetch(url, {
         signal: controller.signal,
         headers: {
@@ -51,10 +48,7 @@ export class ApiSearch extends plugin {
       
       const dataText = await res.text();
       if (!dataText.trim()) {
-        await e.reply([
-          { type: 'image', data: { file: avatarBase64 } },
-          '暂无相关接口查询结果'
-        ], true);
+        await e.reply('暂无相关接口查询结果', true);
         return;
       }
       
@@ -65,8 +59,7 @@ export class ApiSearch extends plugin {
         data = { raw: dataText };
       }
       
-      // 发送：头像图片 + 搜索结果文本
-      await this.sendResultWithAvatar(keyword, data, avatarBase64);
+      await this.sendForwardMessage(keyword, data);
       
     } catch (err) {
       clearTimeout(timeoutId);
@@ -77,38 +70,29 @@ export class ApiSearch extends plugin {
     }
   }
 
-  // Node.js环境获取头像Base64（你的API）
-  async getAvatarBase64() {
-    const res = await fetch('http://baizihaoxiao.xin/API/jixuanyou.php');
-    const arrayBuffer = await res.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    return `data:image/png;base64,${buffer.toString('base64')}`;
-  }
-
-  // 直接发送：头像 + 结果（框架必显示头像）
-  async sendResultWithAvatar(keyword, data, avatarBase64) {
+  async sendForwardMessage(keyword, data) {
     const e = this.e;
-    let resultText = `💡 搜索关键词：${keyword}\n`;
+    let resultText = `搜索关键词：${keyword}\n`;
     
     if (data.raw) {
       resultText += data.raw;
     } else {
       if (data.状态码 === 200 && data.数据列表 && data.数据列表.length > 0) {
-        resultText += `📊 搜索结果：共找到${data.数据列表.length}个相关接口\n\n`;
+        resultText += `搜索结果：共找到${data.数据列表.length}个相关接口\n\n`;
         data.数据列表.forEach((api, index) => {
-          resultText += `【${index + 1}】🔍 接口名称：${api.接口名称}\n`;
-          resultText += `🌐 调用地址：${api.调用地址}\n`;
-          resultText += `📈 接口状态：${api.接口状态} | 📅 添加时间：${api.添加时间}\n`;
-          resultText += `🔢 调用次数：${api.调用次数} | 🔐 访问权限：${api.访问权限}\n`;
+          resultText += `【${index + 1}】接口名称：${api.接口名称}\n`;
+          resultText += `调用地址：${api.调用地址}\n`;
+          resultText += `接口状态：${api.接口状态} | 添加时间：${api.添加时间}\n`;
+          resultText += `调用次数：${api.调用次数} | 访问权限：${api.访问权限}\n`;
           
           if (api.请求参数 && api.请求参数.length > 0) {
-            resultText += `⚙️ 请求参数：\n`;
+            resultText += `请求参数：\n`;
             api.请求参数.forEach((param, pIndex) => {
               resultText += `  ${pIndex + 1}. ${param.参数名}（类型：${param.类型} | 必填：${param.必填}）\n`;
               resultText += `     说明：${param.说明}\n`;
             });
           } else {
-            resultText += `⚙️ 请求参数：无\n`;
+            resultText += `请求参数：无\n`;
           }
           if (index < data.数据列表.length - 1) {
             resultText += `\n`;
@@ -119,12 +103,29 @@ export class ApiSearch extends plugin {
       }
     }
 
-    // 消息结构：头像图片 + 格式化文本
-    const sendMsg = [
-      { type: 'image', data: { file: avatarBase64 } }, // 你的API返回的随机头像
-      { type: 'text', data: { text: resultText } }
-    ];
-
-    await e.reply(sendMsg, true);
+    const forwardMessages = [];
+    
+    forwardMessages.push({
+      user_id: e.user_id,
+      nickname: e.sender.nickname || e.sender.card || '用户',
+      message: `搜索接口：${keyword}`
+    });
+    
+    forwardMessages.push({
+      user_id: 38128085258, // 已替换为指定QQ号
+      nickname: '白子API',
+      message: resultText
+    });
+    
+    try {
+      if (e.isGroup) {
+        const forwardMsg = await e.group.makeForwardMsg(forwardMessages);
+        await e.reply(forwardMsg);
+      } else {
+        await e.reply(resultText);
+      }
+    } catch (error) {
+      await e.reply(resultText);
+    }
   }
 }
