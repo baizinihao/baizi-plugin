@@ -54,7 +54,7 @@ export class ApiQuery extends plugin {
 
   async getLog(e) {
     const cmd = "更新日志";
-    const res = await this.requestApi("https://baizihaoxiao.xin/API/gn.php");
+    const res = await this.requestApi("http://baizihaoxiao.xin/API/gn.php");
     await this.sendForward(e, cmd, res);
   }
 
@@ -66,7 +66,7 @@ export class ApiQuery extends plugin {
 
   async getDelay(e) {
     const cmd = "延迟测试";
-    const res = await this.requestApi("https://baizihaoxiao.xin/API/ys.php");
+    const res = await this.requestApi("http://baizihaoxiao.xin/API/ys.php");
     await this.sendForward(e, cmd, res);
   }
 }
